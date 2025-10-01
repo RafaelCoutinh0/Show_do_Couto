@@ -2,7 +2,14 @@ import tkinter as tk
 import random
 from tkinter import messagebox
 from perguntas import facil, media, dificil
+import pygame
 
+
+def tocar_musica(i = 0):
+    pygame.mixer.init()
+    musicas = ["music_game.mp3", "pergunta1.mp3"]
+    pygame.mixer.music.load(musicas[i])
+    pygame.mixer.music.play(-1)  # -1 para repetir para sempre, ou 0 para tocar uma vez    def tocar_musica():
 class ShowDoMilhao:
     def __init__(self, root):
         self.root = root
@@ -19,6 +26,7 @@ class ShowDoMilhao:
         self.tela_inicial()
 
     def tela_inicial(self):
+        tocar_musica()
         self.limpar_tela()
         self.logo = tk.PhotoImage(file="logo.png")
         self.logo = self.logo.subsample(2, 2)  # divide largura e altura por 2
@@ -40,6 +48,7 @@ class ShowDoMilhao:
         botao_sair.pack(side="left", padx=10)
 
     def iniciar_jogo(self):
+        tocar_musica(i = 1)
         # Reset
         self.pontos = 0
         self.checkpoint = 0
@@ -119,17 +128,31 @@ class ShowDoMilhao:
     def carregar_pergunta(self):
         if self.indice < len(self.perguntas_jogo):
             self.pergunta_atual = self.perguntas_jogo[self.indice]
+
+            # Copia alternativas e índice correto
+            alternativas = self.pergunta_atual["alternativas"][:]
+            correta = self.pergunta_atual["correta"]
+
+            # Cria pares (alternativa, índice_original)
+            alternativas_com_indices = list(enumerate(alternativas))
+            random.shuffle(alternativas_com_indices)  # embaralha os pares
+
+            # Monta lista embaralhada e acha novo índice da resposta correta
+            alternativas_embaralhadas = [alt for idx, alt in alternativas_com_indices]
+            nova_correta = [idx for idx, alt in alternativas_com_indices].index(correta)
+
+            # Salva no objeto para verificação posterior
+            self.pergunta_atual["alternativas_embaralhadas"] = alternativas_embaralhadas
+            self.pergunta_atual["nova_correta"] = nova_correta
+
             self.label_pergunta.config(text=self.pergunta_atual["pergunta"])
-            for i, alt in enumerate(self.pergunta_atual["alternativas"]):
+            for i, alt in enumerate(alternativas_embaralhadas):
                 self.botoes[i].config(text=alt, state="normal")
             self.label_feedback.config(text="")
 
             # Atualiza a régua
             for i, lbl in enumerate(self.labels_regua):
-                if i == self.indice:
-                    lbl.config(fg="yellow")
-                else:
-                    lbl.config(fg="white")
+                lbl.config(fg="yellow" if i == self.indice else "white")
         else:
             self.vitoria()
 
@@ -137,7 +160,7 @@ class ShowDoMilhao:
         for botao in self.botoes:
             botao.config(state="disabled")
 
-        correta = self.pergunta_atual["correta"]
+        correta = self.pergunta_atual["nova_correta"]
         if escolha == correta:
             self.pontos += 1000
             if (self.indice + 1) in [3, 5, 8]:  # checkpoints após pergunta 3, 5 e 8
