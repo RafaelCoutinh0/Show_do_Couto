@@ -7,9 +7,13 @@ import pygame
 
 def tocar_musica(i = 0):
     pygame.mixer.init()
-    musicas = ["music_game.mp3", "pergunta1.mp3"]
+    musicas = ["musics/music_game.mp3", "musics/pergunta1.mp3", "musics/acerto.mp3", "musics/lose.mp3",
+               "musics/win.mp3"]
     pygame.mixer.music.load(musicas[i])
-    pygame.mixer.music.play(-1)  # -1 para repetir para sempre, ou 0 para tocar uma vez    def tocar_musica():
+    if i == 3 or i == 4:
+        pygame.mixer.music.play(0)
+    else:
+        pygame.mixer.music.play(-1)  # -1 para repetir para sempre, ou 0 para tocar uma vez    def tocar_musica():
 class ShowDoMilhao:
     def __init__(self, root):
         self.root = root
@@ -126,6 +130,7 @@ class ShowDoMilhao:
         self.carregar_pergunta()
 
     def carregar_pergunta(self):
+        tocar_musica(1)
         if self.indice < len(self.perguntas_jogo):
             self.pergunta_atual = self.perguntas_jogo[self.indice]
 
@@ -162,6 +167,7 @@ class ShowDoMilhao:
 
         correta = self.pergunta_atual["nova_correta"]
         if escolha == correta:
+            tocar_musica(2)  # toca som de vitória
             self.pontos += 1000
             if (self.indice + 1) in [3, 5, 8]:  # checkpoints após pergunta 3, 5 e 8
                 self.checkpoint = self.pontos
@@ -174,6 +180,7 @@ class ShowDoMilhao:
 
     def vitoria(self):
         self.limpar_tela()
+        tocar_musica(4)  # toca som de vitória
         msg = tk.Label(self.root, text=f"🎉 Parabéns, você ganhou!\nSaiu com R${self.pontos}",
                        font=("Arial", 18, "bold"), fg="yellow", bg="#002e5c")
         msg.pack(pady=100)
@@ -183,6 +190,7 @@ class ShowDoMilhao:
 
     def derrota(self):
         self.limpar_tela()
+        tocar_musica(3)
         msg = tk.Label(self.root, text=f"❌ Você perdeu!\nSaiu com R${self.checkpoint}",
                        font=("Arial", 18, "bold"), fg="red", bg="#002e5c")
         msg.pack(pady=100)
