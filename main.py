@@ -26,6 +26,9 @@ class ShowDoMilhao:
         self.perguntas_jogo = []
         self.pergunta_atual = None
         self.indice = 0
+        self.ajuda_usada = False  # controla uso do dado
+        self.troca_usada = False  # controla uso da troca de pergunta
+        self.ajuda_professor_usada = False  # controla uso da ajuda dos professores
 
         self.tela_inicial()
 
@@ -57,6 +60,9 @@ class ShowDoMilhao:
         self.pontos = 0
         self.checkpoint = 0
         self.indice = 0
+        self.ajuda_usada = False
+        self.troca_usada = False
+        self.ajuda_professor_usada = False
 
         # Perguntas (3 fáceis, 4 médias, 3 difíceis)
         self.perguntas_jogo = random.sample(facil, 10)
@@ -101,6 +107,25 @@ class ShowDoMilhao:
                               command=lambda i=i: self.verificar_resposta(i))
             botao.pack(pady=5)
             self.botoes.append(botao)
+
+        # Botões de ajuda: Dado, Trocar Pergunta e Ajuda dos Professores (lado a lado)
+        frame_ajuda = tk.Frame(frame_jogo, bg="#002e5c")
+        frame_ajuda.pack(pady=5)
+
+        self.botao_ajuda = tk.Button(frame_ajuda, text="Rodar Dados", font=("Arial", 12),
+                                     width=12, bg="purple", fg="white",
+                                     command=self.ajuda_dado)
+        self.botao_ajuda.pack(side="left", padx=5)
+
+        self.botao_troca = tk.Button(frame_ajuda, text="Trocar Pergunta", font=("Arial", 12),
+                                     width=15, bg="darkgreen", fg="white",
+                                     command=self.trocar_pergunta)
+        self.botao_troca.pack(side="left", padx=5)
+
+        self.botao_professor = tk.Button(frame_ajuda, text="Ajuda dos Professores", font=("Arial", 12),
+                                         width=18, bg="darkorange", fg="white",
+                                         command=self.ajuda_professor)
+        self.botao_professor.pack(side="left", padx=5)
 
         # Feedback
         self.label_feedback = tk.Label(frame_jogo, text="", font=("Arial", 14, "bold"),
@@ -160,6 +185,59 @@ class ShowDoMilhao:
                 lbl.config(fg="yellow" if i == self.indice else "white")
         else:
             self.vitoria()
+
+    def trocar_pergunta(self):
+        if self.troca_usada:
+            return
+        self.troca_usada = True
+        self.botao_troca.config(state="disabled")
+
+        # Gera uma nova pergunta aleatória que não está nas perguntas já usadas
+        perguntas_possiveis = [p for p in facil if p not in self.perguntas_jogo]
+        # Se quiser incluir media/dificil, adicione aqui
+        if perguntas_possiveis:
+            nova_pergunta = random.choice(perguntas_possiveis)
+            self.perguntas_jogo[self.indice] = nova_pergunta
+            self.label_feedback.config(
+                text="🔄 Pergunta trocada!",
+                fg="darkgreen"
+            )
+            self.carregar_pergunta()
+        else:
+            self.label_feedback.config(
+                text="Não há perguntas disponíveis para troca.",
+                fg="red"
+            )
+
+    def ajuda_dado(self):
+        if self.ajuda_usada:
+            return
+        self.ajuda_usada = True
+        self.botao_ajuda.config(state="disabled")
+
+        correta = self.pergunta_atual["nova_correta"]
+        alternativas_restantes = [i for i in range(4) if i != correta and self.botoes[i]['state'] == "normal"]
+
+        qtd_eliminar = min(random.randint(1, 3), len(alternativas_restantes))
+        eliminar = random.sample(alternativas_restantes, qtd_eliminar)
+
+        for i in eliminar:
+            self.botoes[i].config(state="disabled", text="")  # Remove texto da alternativa
+
+        self.label_feedback.config(
+            text=f"🎲 Dado rolado: {qtd_eliminar} alternativas eliminadas.",
+            fg="purple"
+        )
+
+    def ajuda_professor(self):
+        if self.ajuda_professor_usada:
+            return
+        self.ajuda_professor_usada = True
+        self.botao_professor.config(state="disabled")
+        self.label_feedback.config(
+            text="👨‍🏫 Os professores sugerem que você pense bem antes de responder!",
+            fg="orange"
+        )
 
     def verificar_resposta(self, escolha):
         for botao in self.botoes:
