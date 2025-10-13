@@ -7,7 +7,8 @@ facil = [
             "As variáveis do sistema mudam e evoluem com o passar \n do tempo.",
             "O modelo só pode ser resolvido por métodos analíticos."
         ],
-        "correta": 2
+        "correta": 2,
+        "ajuda": "Modelos dinâmicos descrevem sistemas cujas variáveis mudam com o tempo."
     },
     {
         "pergunta": "O que é simulação no contexto da engenharia de processos?",
@@ -17,7 +18,8 @@ facil = [
             "A coleta de dados operacionais de um processo existente.",
             "A otimização de custos de produção usando planilhas."
         ],
-        "correta": 1
+        "correta": 1,
+        "ajuda": "Simulação envolve prever o comportamento do sistema usando modelos matemáticos."
     },
     {
         "pergunta": "Um modelo matemático que despreza as variações espaciais e trata as propriedades como homogêneas é chamado de:",
@@ -27,7 +29,8 @@ facil = [
             "Modelo estocástico",
             "Modelo empírico"
         ],
-        "correta": 1
+        "correta": 1,
+        "ajuda": "Modelos a parâmetros concentrados assumem propriedades uniformes no sistema."
     },
     {
         "pergunta": "Um modelo matemático que as variáveis dependentes ou suas derivadas aparecem apenas no 1° grau, ele é classificado como:",
@@ -37,7 +40,8 @@ facil = [
             "Dinâmico",
             "Estático"
         ],
-        "correta": 1
+        "correta": 1,
+        "ajuda": "Modelos lineares têm variáveis e derivadas apenas no primeiro grau."
     },
     {
         "pergunta": "Qual método de modelagem é baseado fundamentalmente em princípios da física e da química?",
@@ -47,7 +51,8 @@ facil = [
             "Método teórico",
             "Método estatístico"
         ],
-        "correta": 2
+        "correta": 2,
+        "ajuda": "O método teórico utiliza leis físicas e químicas para modelar sistemas."
     },
     {
         "pergunta": "Um modelo que descreve um sistema em regime permanente, onde as variáveis não mudam com o tempo, é chamado de:",
@@ -57,7 +62,8 @@ facil = [
             "Modelo estático ou estacionário",
             "Modelo discreto"
         ],
-        "correta": 2
+        "correta": 2,
+        "ajuda": "Modelos estáticos descrevem sistemas em equilíbrio, sem variação temporal."
     },
     {
         "pergunta": "Qual tipo de equação diferencial geralmente descreve um modelo a parâmetros distribuídos?",
@@ -67,7 +73,8 @@ facil = [
             "Equações Diferenciais Ordinárias",
             "Equações de Estado"
         ],
-        "correta": 1
+        "correta": 1,
+        "ajuda": "Modelos distribuídos usam equações diferenciais parciais."
     },
     {
         "pergunta": '"É um sistema de equações, cuja solução, dado um conjunto de entradas, fornece a resposta temporal das variáveis de interesse do sistema."(Denn, 1986)',
@@ -77,7 +84,8 @@ facil = [
             "Modelo conceitual",
             "Modelo estático"
         ],
-        "correta": 0
+        "correta": 0,
+        "ajuda": "Modelos matemáticos fornecem respostas temporais para variáveis do sistema."
     },
     {
         "pergunta": "Modelos que são obtidos correlacionando dados de entrada e saída de um processo, sem se aprofundar nos fenômenos físicos, são chamados de:",
@@ -87,7 +95,8 @@ facil = [
             "Modelos de parâmetros distribuídos",
             "Modelos de primeira ordem"
         ],
-        "correta": 1
+        "correta": 1,
+        "ajuda": "Modelos empíricos são baseados em dados experimentais."
     },
     {
         "pergunta": "Para que serve a etapa de 'Validação do Modelo' no estudo da dinâmica de sistemas?",
@@ -97,7 +106,8 @@ facil = [
             "Para comparar a resposta do modelo com dados \n reais e corrigir possíveis erros.",
             "Para garantir que o modelo seja sempre linear \n e de primeira ordem."
         ],
-        "correta": 2
+        "correta": 2,
+        "ajuda": "A validação compara o modelo com dados reais para garantir precisão."
     }
 ]
 media = [

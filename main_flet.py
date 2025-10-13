@@ -9,7 +9,10 @@ class MusicaPlayer:
     def __init__(self, page):
         self.page = page
         self.audio_player = Audio()
-        self.page.overlay.append(self.audio_player)
+        # Adiciona o controle de áudio à página apenas se não estiver presente
+        if self.audio_player not in self.page.overlay:
+            self.page.overlay.append(self.audio_player)
+            self.page.update()
 
     def tocar(self, i=0):
         musicas = [
@@ -19,9 +22,15 @@ class MusicaPlayer:
             "musics/lose.mp3",
             "musics/win.mp3"
         ]
-        self.audio_player.pause()  # Para a música anterior antes de tocar a nova
+        # Só chama pause se o controle já estiver anexado à página
+        if self.audio_player in self.page.overlay:
+            try:
+                self.audio_player.pause()
+            except AssertionError:
+                pass
         self.audio_player.src = musicas[i]
         self.audio_player.autoplay = True
+        self.page.update()
 
 class ShowDoMilhao:
     def __init__(self, page):
@@ -45,8 +54,28 @@ class ShowDoMilhao:
         self.musica.tocar(0)
         self.page.clean()
         logo = ft.Image(src="logo.png", width=1000, height=500)
-        botao_jogar = ft.ElevatedButton("Jogar", on_click=self.iniciar_jogo, bgcolor=colors.BLUE, color=colors.WHITE)
-        botao_sair = ft.ElevatedButton("Sair", on_click=lambda _: self.page.window_close(), bgcolor=colors.RED, color=colors.WHITE)
+        botao_jogar = ft.ElevatedButton(
+            "Jogar",
+            on_click=self.iniciar_jogo,
+            bgcolor=colors.BLUE,
+            color=colors.WHITE,
+            width=300,
+            height=70,
+            style=ft.ButtonStyle(
+                text_style=ft.TextStyle(size=28, weight=ft.FontWeight.BOLD)
+            )
+        )
+        botao_sair = ft.ElevatedButton(
+            "Sair",
+            on_click=lambda _: self.page.window.close(),  # Correção aqui
+            bgcolor=colors.RED,
+            color=colors.WHITE,
+            width=300,
+            height=70,
+            style=ft.ButtonStyle(
+                text_style=ft.TextStyle(size=28, weight=ft.FontWeight.BOLD)
+            )
+        )
         self.page.add(
             ft.Column([
                 logo,
@@ -84,7 +113,7 @@ class ShowDoMilhao:
                 border=ft.border.all(3, colors.YELLOW if i == self.indice else colors.WHITE),
                 border_radius=18,
                 alignment=ft.alignment.center,
-                margin=ft.margin.only(right=4)
+                margin=ft.margin.only(right=0)  # Aproxima o emoji do número
             )
             if i + 1 in [3, 5, 8]:
                 icone = "💰"
@@ -94,19 +123,43 @@ class ShowDoMilhao:
             item = ft.Row([
                 bolinha,
                 ft.Text(icone, size=18, color=cor_texto) if icone else ft.Text("")
-            ], alignment=ft.MainAxisAlignment.CENTER)
+            ], alignment=ft.MainAxisAlignment.CENTER, spacing=2)  # Reduz o espaçamento
             regua.append(item)
         self.labels_regua = regua
         self.label_pergunta = ft.Text("", size=18, color=colors.YELLOW, weight=ft.FontWeight.BOLD)
         self.botoes = []
         for i in range(4):
-            botao = ft.ElevatedButton("...", width=400, bgcolor=colors.BLUE, color=colors.WHITE, on_click=lambda e, i=i: self.verificar_resposta(i))
+            botao = ft.ElevatedButton(
+                "...",
+                width=500,  # Largura igual à da pergunta
+                bgcolor=colors.BLUE,
+                color=colors.WHITE,
+                on_click=lambda e, i=i: self.verificar_resposta(i)
+            )
             self.botoes.append(botao)
         self.label_feedback = ft.Text("", size=16, color=colors.WHITE)
         self.label_saldo = ft.Text(f"Saldo atual: R${self.pontos}", size=16, color=colors.CYAN)
-        self.botao_ajuda = ft.ElevatedButton("Rodar Dados", bgcolor=colors.PURPLE, color=colors.WHITE, on_click=self.ajuda_dado)
-        self.botao_troca = ft.ElevatedButton("Trocar Pergunta", bgcolor=colors.GREEN_900, color=colors.WHITE, on_click=self.trocar_pergunta)
-        self.botao_professor = ft.ElevatedButton("Ajuda dos Professores", bgcolor=colors.ORANGE_900, color=colors.WHITE, on_click=self.ajuda_professor)
+        self.botao_ajuda = ft.ElevatedButton(
+            "Rodar Dados",
+            bgcolor=colors.PURPLE,
+            color=colors.WHITE,
+            width=160,  # Largura igual à da pergunta
+            on_click=self.ajuda_dado
+        )
+        self.botao_troca = ft.ElevatedButton(
+            "Trocar Pergunta",
+            bgcolor=colors.GREEN_900,
+            color=colors.WHITE,
+            width=160,  # Largura igual à da pergunta
+            on_click=self.trocar_pergunta
+        )
+        self.botao_professor = ft.ElevatedButton(
+            "Ajuda dos Professores",
+            bgcolor=colors.ORANGE_900,
+            color=colors.WHITE,
+            width=160,  # Largura igual à da pergunta
+            on_click=self.ajuda_professor
+        )
         self.botao_desistir = ft.ElevatedButton("Desistir", bgcolor=colors.ORANGE, color=colors.WHITE, on_click=self.desistir)
         self.botao_sair = ft.ElevatedButton("Sair", bgcolor=colors.RED, color=colors.WHITE, on_click=lambda _: self.tela_inicial())
         self.page.add(
@@ -114,7 +167,9 @@ class ShowDoMilhao:
                 ft.Column([
                     self.label_pergunta,
                     *self.botoes,
-                    ft.Row([self.botao_ajuda, self.botao_troca, self.botao_professor]),
+                    self.botao_ajuda,
+                    self.botao_troca,
+                    self.botao_professor,
                     self.label_feedback,
                     self.label_saldo,
                     ft.Row([self.botao_desistir, self.botao_sair]),
@@ -134,6 +189,14 @@ class ShowDoMilhao:
             idx = limite
         return texto[:idx], texto[idx:].lstrip()
 
+    def dividir_ajuda(self, texto, limite=60):
+        if len(texto) <= limite:
+            return texto
+        idx = texto.rfind(" ", 0, limite)
+        if idx == -1:
+            idx = limite
+        return texto[:idx] + "\n" + texto[idx:].lstrip()
+
     def carregar_pergunta(self):
         self.musica.tocar(1)
         if self.indice < len(self.perguntas_jogo):
@@ -147,7 +210,7 @@ class ShowDoMilhao:
             self.pergunta_atual["alternativas_embaralhadas"] = alternativas_embaralhadas
             self.pergunta_atual["nova_correta"] = nova_correta
             # Junta o texto da pergunta em uma única string
-            texto1, texto2 = self.dividir_pergunta(self.pergunta_atual["pergunta"], limite=90)
+            texto1, texto2 = self.dividir_pergunta(self.pergunta_atual["pergunta"], limite=500)
             texto_completo = texto1 + ("\n" + texto2 if texto2 else "")
             pergunta_principal = ft.Container(
                 content=ft.Text(texto_completo, size=18, color=colors.YELLOW, weight=ft.FontWeight.BOLD, selectable=True),
@@ -225,8 +288,10 @@ class ShowDoMilhao:
             return
         self.ajuda_professor_usada = True
         self.botao_professor.disabled = True
-        self.label_feedback.value = "👨‍🏫 Os professores sugerem que você pense bem antes de responder!"
-        self.label_feedback.color = colors.ORANGE
+        texto_ajuda = self.pergunta_atual.get("ajuda", "👨‍🏫 Os professores sugerem que você pense bem antes de responder!")
+        texto_ajuda = self.dividir_ajuda(texto_ajuda, limite=38)
+        self.label_feedback.value = f"👨‍🏫 Ajuda dos Professores: {texto_ajuda}"
+        self.label_feedback.color = colors.RED
         self.page.update()
 
     def verificar_resposta(self, escolha):
