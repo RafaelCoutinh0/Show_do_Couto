@@ -1,0 +1,7 @@
+[tool.flet.app]
+name = "Show do Coutão"
+description = "Jogo estilo Show do Milhão feito em Flet"
+version = "1.0.0"
+entrypoint = "main_flet.py"
+icon = "logo.png"
+include = ["musics", "perguntas.py", "logo.png"]
