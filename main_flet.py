@@ -16,11 +16,11 @@ class MusicaPlayer:
 
     def tocar(self, i=0):
         musicas = [
-            "/assets/musics/music_game.mp3",
-            "/assets/musics/pergunta1.mp3",
-            "/assets/musics/acerto.mp3",
-            "/assets/musics/lose.mp3",
-            "/assets/musics/win.mp3"
+            "/musics/music_game.mp3",
+            "/musics/pergunta1.mp3",
+            "/musics/acerto.mp3",
+            "/musics/lose.mp3",
+            "/musics/win.mp3"
         ]
         # Só chama pause se o controle já estiver anexado à página
         if self.audio_player in self.page.overlay:
@@ -432,4 +432,7 @@ class ShowDoMilhao:
 def main(page: ft.Page):
     ShowDoMilhao(page)
 
-ft.app(target=main)
+if __name__ == "__main__":
+    # Executa o app como servidor web acessível (útil para empacotar como PWA/APK).
+    # Porta 8550 e address 0.0.0.0 expõem localmente; para produção use HTTPS/host externo.
+    ft.app(target=main, view=ft.WEB_BROWSER)
