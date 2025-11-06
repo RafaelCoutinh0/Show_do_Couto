@@ -1,8 +1,9 @@
 import flet as ft
 import random
 from perguntas import facil
-from flet import Colors as colors
 from flet_audio import Audio
+import flet as ft
+colors = ft.colors
 
 # Função para tocar música usando flet-audio
 class MusicaPlayer:
