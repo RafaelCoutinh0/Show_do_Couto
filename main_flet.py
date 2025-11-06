@@ -315,7 +315,7 @@ class ShowDoMilhao:
             spacing=12,
             alignment=ft.MainAxisAlignment.START,
             horizontal_alignment=ft.CrossAxisAlignment.START,
-            scroll=ft.ScrollMode.AUTO if mobile else ft.ScrollMode.NEVER,
+            scroll=ft.ScrollMode.AUTO,
             expand=True,
         )
 
