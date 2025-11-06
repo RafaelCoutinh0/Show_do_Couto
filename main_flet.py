@@ -429,10 +429,18 @@ class ShowDoMilhao:
         dlg.open = False
         self.page.update()
 
+
+import os
+import flet as ft
+
 def main(page: ft.Page):
     ShowDoMilhao(page)
 
 if __name__ == "__main__":
-    # Executa o app como servidor web acessível (útil para empacotar como PWA/APK).
-    # Porta 8550 e address 0.0.0.0 expõem localmente; para produção use HTTPS/host externo.
-    ft.app(target=main, view=ft.WEB_BROWSER)
+    port = int(os.environ.get("PORT", 8080))
+    ft.app(
+        target=main,
+        view=ft.WEB_BROWSER,
+        port=port,
+        host="0.0.0.0"
+    )
