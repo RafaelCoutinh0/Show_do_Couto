@@ -2,7 +2,7 @@ import flet as ft
 import random
 from perguntas import facil
 import flet as ft
-colors = ft.Colors
+colors = ft.colors
 # Função para tocar música usando flet-audio
 class MusicaPlayer:
     def __init__(self, page):
