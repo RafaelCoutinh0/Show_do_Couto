@@ -1,7 +1,6 @@
 import flet as ft
 import random
 from perguntas import facil
-from flet_audio import Audio
 import flet as ft
 colors = ft.colors
 
@@ -9,7 +8,7 @@ colors = ft.colors
 class MusicaPlayer:
     def __init__(self, page):
         self.page = page
-        self.audio_player = Audio()
+        self.audio_player = ft.Audio()
         # Adiciona o controle de áudio à página apenas se não estiver presente
         if self.audio_player not in self.page.overlay:
             self.page.overlay.append(self.audio_player)
