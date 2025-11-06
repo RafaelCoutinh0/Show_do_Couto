@@ -154,7 +154,8 @@ class ShowDoMilhao:
     def _page_width(self):
         # page.window_width existe em algumas versões; fallback para page.width
         try:
-            return getattr(self.page, "window_width", getattr(self.page, "width", 800)) or 800
+            return (self.page.window.width if self.page.window else self.page.width or 800)
+
         except Exception:
             return 800
 
@@ -619,13 +620,14 @@ def main(page: ft.Page):
     # Ajustes iniciais responsivos
     try:
         # força avaliação inicial de window size
-        page.window_width = getattr(page, "window_width", getattr(page, "width", 800))
+        page_width = page.window.width if page.window else page.width or 800
+
     except Exception:
         pass
 
     # Ajustes de padding para mobile
     try:
-        if getattr(page, "window_width", getattr(page, "width", 800)) < 600:
+        if (page.window.width if page.window else page.width or 800) < 600:
             page.padding = ft.padding.all(6)
     except Exception:
         pass
