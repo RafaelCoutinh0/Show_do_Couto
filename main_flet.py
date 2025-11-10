@@ -13,7 +13,9 @@ import hashlib
 WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbwIVi_uiA-MFKIpwsjH9oQuLnmjxt2WOJKan5KbTYiuLCjjkkVlqbaVCga3TywM2mw_8A/exec"
 
 def hash_senha(senha: str) -> str:
-    return hashlib.sha256(senha.strip().encode("utf-8")).hexdigest()
+    # garante que senha None seja tratada como string vazia para evitar AttributeError
+    s = (senha or "").strip()
+    return hashlib.sha256(s.encode("utf-8")).hexdigest()
 
 def registrar_usuario(nome, matricula, email, senha):
     payload = {
@@ -132,7 +134,14 @@ class TelaRegistro(ft.UserControl):
         super().__init__()
         self.page = page
         self.callback = callback
-        self.go_login = lambda: self.page.add(TelaLogin(self.page, self.callback))
+        # ao ir para login, limpar a página e adicionar a tela de login (mantém comportamento consistente)
+        def _go_login(e=None):
+            try:
+                self.page.clean()
+            except Exception:
+                pass
+            self.page.add(TelaLogin(self.page, self.callback))
+        self.go_login = _go_login
         self.go_jogo = self.callback
 
         self.nome = ft.TextField(label="Nome", width=300)
@@ -141,35 +150,50 @@ class TelaRegistro(ft.UserControl):
         self.senha = ft.TextField(label="Senha", password=True, can_reveal_password=True, width=300)
 
     def build(self):
-        return ft.Column(
-            [
-                ft.Text("Registro", size=30, weight=ft.FontWeight.BOLD),
-                self.nome,
-                self.matricula,
-                self.email,
-                self.senha,
-                ft.ElevatedButton("Registrar", on_click=self.on_registrar),
-                ft.TextButton("Já tenho conta", on_click=lambda e: self.go_login())
-            ],
-            alignment="center",
-            horizontal_alignment="center"
-        )
+        # envolver em Container expandido e centralizar verticalmente e horizontalmente
+        col = ft.Column([
+            ft.Text("Registro", size=30, weight=ft.FontWeight.BOLD),
+            self.nome,
+            self.matricula,
+            self.email,
+            self.senha,
+            ft.ElevatedButton("Registrar", on_click=self.on_registrar, width=300),
+            ft.TextButton("Já tenho conta", on_click=self.go_login)
+        ], alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=12)
+        return ft.Container(content=col, alignment=ft.alignment.center, expand=True, padding=ft.padding.all(20))
 
     def on_registrar(self, e):
-        ok = registrar_usuario(
-            self.nome.value,
-            self.matricula.value,
-            self.email.value,
-            self.senha.value
-        )
+        # sanitiza entradas para evitar None
+        nome = (self.nome.value or "").strip()
+        matricula = (self.matricula.value or "").strip()
+        email = (self.email.value or "").strip()
+        senha = (self.senha.value or "").strip()
+        ok = registrar_usuario(nome, matricula, email, senha)
         if ok:
-            self.page.snack_bar = ft.SnackBar(ft.Text("✅ Registrado com sucesso"))
-            self.page.snack_bar.open = True
-            self.go_jogo()
+            try:
+                self.page.snack_bar = ft.SnackBar(ft.Text("✅ Registrado com sucesso"))
+                self.page.snack_bar.open = True
+            except Exception:
+                pass
+            # limpa antes de iniciar o jogo
+            try:
+                self.page.clean()
+            except Exception:
+                pass
+            try:
+                self.go_jogo()
+            except Exception:
+                pass
         else:
             self.page.snack_bar = ft.SnackBar(ft.Text("❌ Erro ao registrar"))
             self.page.snack_bar.open = True
         self.page.update()
+
+    def ir_para_login(self):
+        self.page.clean()
+        self.page.add(TelaLogin(self.page, self.callback))
+
+
 class TelaLogin(ft.UserControl):
     def __init__(self, page, callback):
         super().__init__()
@@ -823,7 +847,19 @@ class TelaLogin(ft.UserControl):
         self.page.add(TelaEntrada(self.page, self.callback))
 
     def _fechar_dialog(self, dlg):
-        dlg.open = False
+        try:
+            dlg.open = False
+        except Exception:
+            pass
+        try:
+            self.page.dialog = None
+        except Exception:
+            pass
+        try:
+            if dlg in self.page.overlay:
+                self.page.overlay.remove(dlg)
+        except Exception:
+            pass
         try:
             self.page.update()
         except Exception:
