@@ -5,7 +5,6 @@ import random
 import traceback
 import flet as ft
 import requests
-import json
 import base64
 from pathlib import Path
 import hashlib
@@ -807,64 +806,8 @@ class TelaEntrada(ft.UserControl):
         # adicionar a tela de registro corretamente
         self.page.add(TelaRegistro(self.page, self.callback))
 
-class TelaLogin(ft.UserControl):
-    def __init__(self, page, callback):
-        super().__init__()
-        self.page = page
-        self.callback = callback
-        self.go_registro = lambda: self.page.add(TelaRegistro(self.page, self.callback))
-        self.go_jogo = self.callback
-
-        self.matricula = ft.TextField(label="Matrícula", width=300)
-        self.senha = ft.TextField(label="Senha", password=True, can_reveal_password=True, width=300)
-
-    def build(self):
-        btn_login = ft.ElevatedButton("Entrar", on_click=self.entrar, width=300)
-        btn_voltar = ft.ElevatedButton("Voltar", on_click=lambda e: self._voltar(), width=300)
-        col = ft.Column([ft.Text("Login", size=24, weight=ft.FontWeight.BOLD), self.matricula, self.senha, btn_login, btn_voltar], alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=12)
-        return ft.Container(content=col, alignment=ft.alignment.center, expand=True, padding=ft.padding.all(20))
-
-    def entrar(self, e):
-        matricula = (self.matricula.value or "").strip()
-        senha = (self.senha.value or "").strip()
-        ok = login_usuario(matricula, senha)
-        if ok:
-            # login ok
-            self.callback()
-        else:
-            dlg = ft.AlertDialog(title=ft.Text("Erro"), content=ft.Text("Matrícula ou senha incorretas"), actions=[ft.TextButton("OK", on_click=lambda e: self._fechar_dialog(dlg))])
-            self.page.dialog = dlg
-            if dlg not in self.page.overlay:
-                self.page.overlay.append(dlg)
-            dlg.open = True
-            try:
-                self.page.update()
-            except Exception:
-                pass
-
-    def _voltar(self):
-        self.page.clean()
-        self.page.add(TelaEntrada(self.page, self.callback))
-
-    def _fechar_dialog(self, dlg):
-        try:
-            dlg.open = False
-        except Exception:
-            pass
-        try:
-            self.page.dialog = None
-        except Exception:
-            pass
-        try:
-            if dlg in self.page.overlay:
-                self.page.overlay.remove(dlg)
-        except Exception:
-            pass
-        try:
-            self.page.update()
-        except Exception:
-            pass
-
+# A definição de TelaLogin foi removida aqui (duplicata). Há uma definição válida
+# mais abaixo no arquivo que é usada pela aplicação. Mantida para evitar redeclaração.
 
 def main(page: ft.Page):
     # define cor de fundo já na entrada para evitar tela cinza em formulários
