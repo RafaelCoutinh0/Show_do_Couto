@@ -6,6 +6,8 @@ import traceback
 import flet as ft
 import requests
 import json
+import base64
+from pathlib import Path
 
 WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbwIVi_uiA-MFKIpwsjH9oQuLnmjxt2WOJKan5KbTYiuLCjjkkVlqbaVCga3TywM2mw_8A/exec"
 
@@ -244,7 +246,26 @@ class ShowDoMilhao:
         except Exception:
             pass
         self.page.clean()
-        logo = ft.Image(src=ASSET_LOGO, width=1000, height=500)
+        # tenta embutir a imagem como data URI para garantir exibição
+        def _get_logo_src():
+            try:
+                p = Path(ASSET_LOGO)
+                if p.exists():
+                    b = p.read_bytes()
+                    mime = "image/png"
+                    # inferir por extensão simples
+                    if p.suffix.lower() in [".jpg", ".jpeg"]:
+                        mime = "image/jpeg"
+                    elif p.suffix.lower() == ".gif":
+                        mime = "image/gif"
+                    data = base64.b64encode(b).decode("ascii")
+                    return f"data:{mime};base64,{data}"
+            except Exception:
+                pass
+            # fallback: caminho direto (requer assets_dir configurado)
+            return ASSET_LOGO
+
+        logo = ft.Image(src=_get_logo_src(), width=600, height=300, fit=ft.ImageFit.CONTAIN)
         botao_style = self._make_button_style()
         botao_jogar = ft.ElevatedButton(
             "Jogar",
