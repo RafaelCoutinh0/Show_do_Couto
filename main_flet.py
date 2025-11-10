@@ -18,83 +18,34 @@ def hash_senha(senha: str) -> str:
     return s
 
 def registrar_usuario(nome, matricula, email, senha):
-    """Envia registro ao webhook. Retorna (sucesso:bool, resposta:str).
-
-    Valida o corpo da resposta para aceitar somente confirmações explícitas de registro.
-    """
     payload = {
         "action": "register",
-        "nome": (nome or "").strip(),
-        "matricula": (matricula or "").strip(),
-        "email": (email or "").strip(),
-        "senha": hash_senha(senha)
+        "nome": nome,
+        "matricula": matricula,
+        "email": email,
+        "senha": senha
     }
+
     try:
-        print("DEBUG payload register:", payload)
-        headers = {"Content-Type": "application/json"}
-        r = requests.post(WEBHOOK_URL, data=json.dumps(payload), headers=headers, timeout=10)
-        print("DEBUG registro (status):", r.status_code, "body:", r.text)
-        if r.status_code != 200:
-            return (False, f"HTTP {r.status_code}: {r.text}")
-        # tentar interpretar JSON
-        try:
-            data = r.json()
-            if isinstance(data, dict) and data.get("success") in (True, "true", "True", 1):
-                return (True, r.text)
-            # aceitar message ou status explícitos
-            msg = str(data.get("message") or "").upper()
-            if "REGISTER_OK" in msg or msg in ("OK", "SUCCESS"):
-                return (True, r.text)
-            return (False, r.text)
-        except Exception:
-            # não é JSON: analisar texto simples
-            text = (r.text or "").strip().upper()
-            if "REGISTER_OK" in text or text == "OK" or "SUCCESS" in text:
-                return (True, r.text)
-            return (False, r.text)
-    except Exception as e:
-        print("ERRO REGISTRO:", e)
-        return (False, str(e))
+        r = requests.post(GS_URL, json=payload, timeout=10)
+        return r.text == "REGISTER_OK"
+    except:
+        return False
+
 
 def login_usuario(matricula, senha):
-    """Tenta login no webhook. Retorna (sucesso:bool, resposta:str).
-
-    Faz GET (leitura) e valida o corpo da resposta para aceitar somente sinais explícitos de login bem-sucedido.
-    """
-    payload = {
+    params = {
         "action": "login",
-        "matricula": (matricula or "").strip(),
-        "senha": hash_senha(senha)
+        "matricula": matricula,
+        "senha": senha
     }
+
     try:
-        r = requests.get(WEBHOOK_URL, params=payload, timeout=10)
-        print("DEBUG payload login (GET):", payload)
-        print("DEBUG login (status):", r.status_code, "body:", r.text)
-        if r.status_code != 200:
-            return (False, f"HTTP {r.status_code}: {r.text}")
-        # tentar interpretar JSON primeiro
-        try:
-            data = r.json()
-            # casos comuns: {'success': True} ou {'status':'OK'}
-            if isinstance(data, dict):
-                if data.get("success") in (True, "true", "True", 1):
-                    return (True, r.text)
-                status = str(data.get("status") or "").upper()
-                if status in ("OK", "LOGIN_OK", "SUCCESS"):
-                    return (True, r.text)
-            # se JSON não indicar sucesso, tratar como falha
-            return (False, r.text)
-        except Exception:
-            # não é JSON: analisar texto
-            text = (r.text or "").strip().upper()
-            # aceitar marcas explícitas de sucesso
-            if "LOGIN_OK" in text or "SUCCESS" in text or text == "OK" or "USER_FOUND" in text or "ENCONTRADO" in text:
-                return (True, r.text)
-            # caso contrário, considerar falha e devolver corpo para debugging
-            return (False, r.text)
-    except Exception as e:
-        print("ERRO LOGIN:", e)
-        return (False, str(e))
+        r = requests.get(GS_URL, params=params, timeout=10)
+        return r.text == "LOGIN_OK"
+    except:
+        return False
+
 
 # Compatibilidade com cores entre versões:
 try:
@@ -177,148 +128,79 @@ class MusicaPlayer:
             # não deixar quebrar a aplicação por erro de áudio
             print("Erro ao tocar áudio:", traceback.format_exc())
 
-
-class TelaRegistro(ft.UserControl):
-    def __init__(self, page, callback):
+class TelaRegistro(ft.Column):
+    def __init__(self, app):
         super().__init__()
-        self.page = page
-        self.callback = callback
-        # ao ir para login, limpar a página e adicionar a tela de login (mantém comportamento consistente)
-        def _go_login(e=None):
-            try:
-                self.page.clean()
-            except Exception:
-                pass
-            self.page.add(TelaLogin(self.page, self.callback))
-        self.go_login = _go_login
-        self.go_jogo = self.callback
+        self.app = app
 
-        self.nome = ft.TextField(label="Nome", width=300)
-        self.matricula = ft.TextField(label="Matrícula", width=300)
-        self.email = ft.TextField(label="Email", width=300)
-        self.senha = ft.TextField(label="Senha", password=True, can_reveal_password=True, width=300)
+        self.nome = ft.TextField(label="Nome")
+        self.matricula = ft.TextField(label="Matrícula")
+        self.email = ft.TextField(label="Email")
+        self.senha = ft.TextField(label="Senha", password=True, can_reveal_password=True)
 
-    def build(self):
-        # envolver em Container expandido e centralizar verticalmente e horizontalmente
-        col = ft.Column([
-            ft.Text("Registro", size=30, weight=ft.FontWeight.BOLD),
+        self.controls = [
+            ft.Text("Criar conta", size=30, weight="bold"),
             self.nome,
             self.matricula,
             self.email,
             self.senha,
-            ft.ElevatedButton("Registrar", on_click=self.on_registrar, width=300),
-            ft.TextButton("Já tenho conta", on_click=self.go_login)
-        ], alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=12)
-        return ft.Container(content=col, alignment=ft.alignment.center, expand=True, padding=ft.padding.all(20))
+            ft.ElevatedButton("Registrar", on_click=self.on_registrar),
+            ft.TextButton("Já tenho conta", on_click=self.on_go_login)
+        ]
 
     def on_registrar(self, e):
-        # sanitiza entradas para evitar None
-        nome = (self.nome.value or "").strip()
-        matricula = (self.matricula.value or "").strip()
-        email = (self.email.value or "").strip()
-        senha = (self.senha.value or "").strip()
-        ok, resposta = registrar_usuario(nome, matricula, email, senha)
-        if ok:
-            try:
-                self.page.snack_bar = ft.SnackBar(ft.Text("✅ Registrado com sucesso"))
-                self.page.snack_bar.open = True
-            except Exception:
-                pass
-            # limpa antes de iniciar o jogo
-            try:
-                self.page.clean()
-            except Exception:
-                pass
-            try:
-                self.go_jogo()
-            except Exception:
-                pass
-            try:
-                self.page.update()
-            except Exception:
-                pass
-            return
-
-        # falha: mostrar diálogo com resposta detalhada para debugging
-        try:
-            dlg = ft.AlertDialog(
-                title=ft.Text("Erro ao Registrar"),
-                content=ft.Text(str(resposta)[:1000]),
-                actions=[ft.TextButton("OK", on_click=lambda e: self._fechar_dialog(dlg))]
-            )
-            self.page.dialog = dlg
-            if dlg not in self.page.overlay:
-                self.page.overlay.append(dlg)
-            dlg.open = True
-            try:
-                self.page.update()
-            except Exception:
-                pass
-        except Exception:
-            # fallback: snack com a mensagem curta
-            try:
-                self.page.snack_bar = ft.SnackBar(ft.Text(f"❌ Erro ao registrar: {str(resposta)[:120]}"))
-                self.page.snack_bar.open = True
-                self.page.update()
-            except Exception:
-                pass
-        self.page.update()
-
-    def ir_para_login(self):
-        self.page.clean()
-        self.page.add(TelaLogin(self.page, self.callback))
-
-
-class TelaLogin(ft.UserControl):
-    def __init__(self, page, callback):
-        super().__init__()
-        self.page = page
-        self.callback = callback
-        self.go_registro = lambda: self.page.add(TelaRegistro(self.page, self.callback))
-        self.go_jogo = self.callback
-
-        self.matricula = ft.TextField(label="Matrícula", width=300)
-        self.senha = ft.TextField(label="Senha", width=300, password=True, can_reveal_password=True)
-
-    def build(self):
-        # tornar equivalente à tela de registro: Container expandido e centralizado
-        col = ft.Column(
-            [
-                ft.Text("Login", size=30, weight=ft.FontWeight.BOLD),
-                self.matricula,
-                self.senha,
-                ft.ElevatedButton("Entrar", on_click=self.on_login, width=300),
-                ft.TextButton("Criar nova conta", on_click=lambda e: self.go_registro())
-            ],
-            alignment=ft.MainAxisAlignment.CENTER,
-            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-            spacing=12
+        ok = registrar_usuario(
+            self.nome.value,
+            self.matricula.value,
+            self.email.value,
+            self.senha.value
         )
-        return ft.Container(content=col, alignment=ft.alignment.center, expand=True, padding=ft.padding.all(20))
+
+        if ok:
+            self.app.page.snack_bar = ft.SnackBar(ft.Text("✅ Conta criada com sucesso"))
+            self.app.page.snack_bar.open = True
+            self.app.tela_login()
+        else:
+            self.app.page.snack_bar = ft.SnackBar(ft.Text("❌ Erro ao registrar"))
+            self.app.page.snack_bar.open = True
+
+        self.app.page.update()
+
+    def on_go_login(self, e):
+        self.app.tela_login()
+
+
+class TelaLogin(ft.Column):
+    def __init__(self, app):
+        super().__init__()
+        self.app = app
+
+        self.matricula = ft.TextField(label="Matrícula")
+        self.senha = ft.TextField(label="Senha", password=True, can_reveal_password=True)
+
+        self.controls = [
+            ft.Text("Login", size=30, weight="bold"),
+            self.matricula,
+            self.senha,
+            ft.ElevatedButton("Entrar", on_click=self.on_login),
+            ft.TextButton("Criar conta", on_click=self.on_go_registro)
+        ]
 
     def on_login(self, e):
-        ok, resposta = login_usuario(self.matricula.value, self.senha.value)
-        if ok:
-            try:
-                self.page.snack_bar = ft.SnackBar(ft.Text("✅ Login OK"))
-                self.page.snack_bar.open = True
-            except Exception:
-                pass
-            try:
-                self.go_jogo()
-            except Exception:
-                pass
-        else:
-            try:
-                self.page.snack_bar = ft.SnackBar(ft.Text(f"❌ Matrícula ou senha incorretas: {str(resposta)[:200]}"))
-                self.page.snack_bar.open = True
-            except Exception:
-                pass
-        try:
-            self.page.update()
-        except Exception:
-            pass
+        ok = login_usuario(self.matricula.value, self.senha.value)
 
+        if ok:
+            self.app.page.snack_bar = ft.SnackBar(ft.Text("✅ Login OK"))
+            self.app.page.snack_bar.open = True
+            self.app.tela_inicial()
+        else:
+            self.app.page.snack_bar = ft.SnackBar(ft.Text("❌ Matrícula ou senha incorretas"))
+            self.app.page.snack_bar.open = True
+
+        self.app.page.update()
+
+    def on_go_registro(self, e):
+        self.app.tela_registro()
 
 class ShowDoMilhao:
     def __init__(self, page: ft.Page, on_logout=None):
