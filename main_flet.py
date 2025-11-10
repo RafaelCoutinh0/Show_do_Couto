@@ -43,22 +43,39 @@ def registrar_usuario(nome, matricula, email, senha):
 def login_usuario(matricula, senha):
     """Tenta login no webhook. Retorna (sucesso:bool, resposta:str).
 
-    ALTERAÇÃO: usar GET para evitar que o webhook interprete a chamada como escrita
-    (alguns endpoints de Google Apps Script gravam apenas em requisições POST)."""
+    Faz GET (leitura) e valida o corpo da resposta para aceitar somente sinais explícitos de login bem-sucedido.
+    """
     payload = {
         "action": "login",
         "matricula": (matricula or "").strip(),
         "senha": hash_senha(senha)
     }
     try:
-        # usar GET com params para requisição de leitura (não deve causar escrita no Sheets)
         r = requests.get(WEBHOOK_URL, params=payload, timeout=10)
         print("DEBUG payload login (GET):", payload)
         print("DEBUG login (status):", r.status_code, "body:", r.text)
-        if r.status_code == 200:
-            return (True, r.text)
-        else:
+        if r.status_code != 200:
             return (False, f"HTTP {r.status_code}: {r.text}")
+        # tentar interpretar JSON primeiro
+        try:
+            data = r.json()
+            # casos comuns: {'success': True} ou {'status':'OK'}
+            if isinstance(data, dict):
+                if data.get("success") in (True, "true", "True", 1):
+                    return (True, r.text)
+                status = str(data.get("status") or "").upper()
+                if status in ("OK", "LOGIN_OK", "SUCCESS"):
+                    return (True, r.text)
+            # se JSON não indicar sucesso, tratar como falha
+            return (False, r.text)
+        except Exception:
+            # não é JSON: analisar texto
+            text = (r.text or "").strip().upper()
+            # aceitar marcas explícitas de sucesso
+            if "LOGIN_OK" in text or "SUCCESS" in text or text == "OK" or "USER_FOUND" in text or "ENCONTRADO" in text:
+                return (True, r.text)
+            # caso contrário, considerar falha e devolver corpo para debugging
+            return (False, r.text)
     except Exception as e:
         print("ERRO LOGIN:", e)
         return (False, str(e))
@@ -248,28 +265,43 @@ class TelaLogin(ft.UserControl):
         self.senha = ft.TextField(label="Senha", width=300, password=True, can_reveal_password=True)
 
     def build(self):
-        return ft.Column(
+        # tornar equivalente à tela de registro: Container expandido e centralizado
+        col = ft.Column(
             [
                 ft.Text("Login", size=30, weight=ft.FontWeight.BOLD),
                 self.matricula,
                 self.senha,
-                ft.ElevatedButton("Entrar", on_click=self.on_login),
+                ft.ElevatedButton("Entrar", on_click=self.on_login, width=300),
                 ft.TextButton("Criar nova conta", on_click=lambda e: self.go_registro())
             ],
-            alignment="center",
-            horizontal_alignment="center"
+            alignment=ft.MainAxisAlignment.CENTER,
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            spacing=12
         )
+        return ft.Container(content=col, alignment=ft.alignment.center, expand=True, padding=ft.padding.all(20))
 
     def on_login(self, e):
         ok, resposta = login_usuario(self.matricula.value, self.senha.value)
         if ok:
-            self.page.snack_bar = ft.SnackBar(ft.Text("✅ Login OK"))
-            self.page.snack_bar.open = True
-            self.go_jogo()
+            try:
+                self.page.snack_bar = ft.SnackBar(ft.Text("✅ Login OK"))
+                self.page.snack_bar.open = True
+            except Exception:
+                pass
+            try:
+                self.go_jogo()
+            except Exception:
+                pass
         else:
-            self.page.snack_bar = ft.SnackBar(ft.Text(f"❌ Matrícula ou senha incorretas: {resposta}"))
-            self.page.snack_bar.open = True
-        self.page.update()
+            try:
+                self.page.snack_bar = ft.SnackBar(ft.Text(f"❌ Matrícula ou senha incorretas: {str(resposta)[:200]}"))
+                self.page.snack_bar.open = True
+            except Exception:
+                pass
+        try:
+            self.page.update()
+        except Exception:
+            pass
 
 
 class ShowDoMilhao:
