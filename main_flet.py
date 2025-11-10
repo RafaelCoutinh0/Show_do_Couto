@@ -10,45 +10,6 @@ from pathlib import Path
 WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbwIVi_uiA-MFKIpwsjH9oQuLnmjxt2WOJKan5KbTYiuLCjjkkVlqbaVCga3TywM2mw_8A/exec"
 GS_URL = "https://script.google.com/macros/s/AKfycbwIVi_uiA-MFKIpwsjH9oQuLnmjxt2WOJKan5KbTYiuLCjjkkVlqbaVCga3TywM2mw_8A/exec"
 
-# path para persistir acertos por usuário
-DB_ACERTOS_FILE = Path(__file__).parent / "acertos.json"
-
-def _load_acertos_db():
-    try:
-        if DB_ACERTOS_FILE.exists():
-            return json.loads(DB_ACERTOS_FILE.read_text(encoding="utf-8"))
-    except Exception:
-        pass
-    return {}
-
-def _save_acertos_db(db):
-    try:
-        DB_ACERTOS_FILE.write_text(json.dumps(db, ensure_ascii=False, indent=2), encoding="utf-8")
-    except Exception:
-        pass
-
-def add_acerto_for_user(user_id, acerto_item):
-    """Adiciona um acerto (dict) ao usuário (persistente)."""
-    if not user_id:
-        return
-    try:
-        db = _load_acertos_db()
-        lst = db.get(user_id) or []
-        lst.append(acerto_item)
-        db[user_id] = lst
-        _save_acertos_db(db)
-    except Exception:
-        pass
-
-def get_acertos_for_user(user_id):
-    if not user_id:
-        return []
-    try:
-        db = _load_acertos_db()
-        return db.get(user_id, []) or []
-    except Exception:
-        return []
-
 def hash_senha(senha: str) -> str:
     # NÃO usar criptografia: retornar a senha em texto puro conforme solicitado
     # mantém tratamento de None e trim
@@ -253,12 +214,10 @@ class MusicaPlayer:
 # Removido: antiga definição de TelaLogin que herdava ft.Column (substituída por UserControl mais acima)
 
 class ShowDoMilhao:
-    def __init__(self, page: ft.Page, on_logout=None, user_id=None):
+    def __init__(self, page: ft.Page, on_logout=None):
         self.page = page
         # callback para voltar à tela de entrada (login/registro)
         self.on_logout = on_logout
-        # user_id (matrícula ou identificador) para persistir acertos por usuário
-        self.user_id = user_id
         try:
             self.page.title = "Show do Coutão"
             self.page.bgcolor = "#002e5c"
@@ -275,12 +234,6 @@ class ShowDoMilhao:
         self.ajuda_professor_usada = False
         self.labels_regua = []
         self.botoes = []
-        # Lista para armazenar as perguntas que o jogador já acertou
-        # carregar acertos persistidos do usuário (se houver)
-        if self.user_id:
-            self.perguntas_acertadas = list(get_acertos_for_user(self.user_id))
-        else:
-            self.perguntas_acertadas = []
         self.tela_inicial()
 
     # helpers para compatibilidade de ButtonStyle entre versões
@@ -307,8 +260,6 @@ class ShowDoMilhao:
         except Exception:
             pass
         self.page.clean()
-        # garantir estado inicial limpo
-
         # tenta embutir a imagem como data URI para garantir exibição
         def _get_logo_src():
             try:
@@ -342,35 +293,17 @@ class ShowDoMilhao:
         )
         # "Sair" deve apenas deslogar: chamar on_logout para voltar ao login/registro
         def _sair_inicial(e):
-            # tenta chamar callback de logout, se fornecido
             try:
-                if callable(getattr(self, "on_logout", None)):
+                if callable(getattr(self, 'on_logout', None)):
                     return self.on_logout()
             except Exception:
                 pass
-            # fallback: limpar e mostrar uma tela simples que retorna para tela_inicial
+            # fallback: mostrar tela de entrada (login/registro)
             try:
                 self.page.clean()
             except Exception:
                 pass
-            try:
-                col = ft.Column(
-                    [
-                        ft.Text("Você saiu do jogo", size=20, weight=ft.FontWeight.BOLD),
-                        ft.ElevatedButton("Voltar", on_click=lambda ev: self.tela_inicial(), width=220)
-                    ],
-                    alignment=ft.MainAxisAlignment.CENTER,
-                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                    spacing=16
-                )
-                self.page.add(ft.Container(content=col, alignment=ft.alignment.center, expand=True))
-                try:
-                    self.page.update()
-                except Exception:
-                    pass
-            except Exception:
-                # evitar crash caso o fallback falhe
-                pass
+            self.page.add(TelaEntrada(self.page, None))
 
         botao_sair = ft.ElevatedButton(
             "Sair",
@@ -381,27 +314,9 @@ class ShowDoMilhao:
             height=70,
             style=botao_style
         )
-
-        botao_minhas = None
-        if getattr(self, "user_id", None):
-            botao_minhas = ft.ElevatedButton(
-                "Minhas Respostas",
-                on_click=self.mostrar_acertos,
-                bgcolor=(colors.BROWN if colors is not None else None),
-                color=(colors.WHITE if colors is not None else None),
-                width=300,
-                height=70
-            )
-
-        # montar linha de botões: se houver botao_minhas, incluí-lo entre Jogar e Sair
-        row_buttons = [botao_jogar]
-        if botao_minhas:
-            row_buttons.append(botao_minhas)
-        row_buttons.append(botao_sair)
-
         col = ft.Column([
             logo,
-            ft.Row(row_buttons, alignment=ft.MainAxisAlignment.CENTER)
+            ft.Row([botao_jogar, botao_sair], alignment=ft.MainAxisAlignment.CENTER)
         ], alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=24)
         # envolver em Container expandido para centralizar também verticalmente
         self.page.add(ft.Container(content=col, alignment=ft.alignment.center, expand=True))
@@ -415,7 +330,6 @@ class ShowDoMilhao:
             except Exception:
                 pass
             self.pontos = 0
-            # NÃO resetar persistência global dos acertos do usuário; manter histórico
             # inicia jogo: limpar página e construir a interface do jogo
             try:
                 self.page.clean()
@@ -512,38 +426,18 @@ class ShowDoMilhao:
             width=160,
             on_click=self.ajuda_professor
         )
-
         # Sair deve apenas deslogar: chamar on_logout para voltar ao login/registro
         def _sair_jogo(e):
-            # tenta executar callback de logout, se fornecido
             try:
-                if callable(getattr(self, "on_logout", None)):
+                if callable(getattr(self, 'on_logout', None)):
                     return self.on_logout()
             except Exception:
                 pass
-            # fallback: limpar e mostrar uma tela simples que retorna para tela_inicial
             try:
                 self.page.clean()
             except Exception:
                 pass
-            try:
-                col = ft.Column(
-                    [
-                        ft.Text("Você saiu do jogo", size=20, weight=ft.FontWeight.BOLD),
-                        ft.ElevatedButton("Voltar", on_click=lambda ev: self.tela_inicial(), width=220)
-                    ],
-                    alignment=ft.MainAxisAlignment.CENTER,
-                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                    spacing=16
-                )
-                self.page.add(ft.Container(content=col, alignment=ft.alignment.center, expand=True))
-                try:
-                    self.page.update()
-                except Exception:
-                    pass
-            except Exception:
-                # evitar crash caso o fallback falhe
-                pass
+            self.page.add(TelaEntrada(self.page, None))
 
         self.botao_sair = ft.ElevatedButton("Sair", bgcolor=(colors.RED if colors is not None else None), color=(colors.WHITE if colors is not None else None), on_click=_sair_jogo)
         self.botao_desistir = ft.ElevatedButton("Desistir", on_click=self.desistir)
@@ -552,7 +446,6 @@ class ShowDoMilhao:
                 ft.Column([
                     self.label_pergunta,
                     *self.botoes,
-                    # ajudas (sem o botão "Minhas Respostas", que fica na tela inicial)
                     ft.Row([self.botao_ajuda, self.botao_troca, self.botao_professor]),
                     self.label_feedback,
                     self.label_saldo,
@@ -562,58 +455,6 @@ class ShowDoMilhao:
             ], alignment=ft.MainAxisAlignment.CENTER)
         )
         self.carregar_pergunta()
-
-    def mostrar_acertos(self, e=None):
-        """Mostra uma tela com as perguntas já acertadas e o conteúdo da ajuda do professor.
-        Usa os acertos persistidos do usuário (se houver user_id)."""
-        try:
-            self.page.clean()
-        except Exception:
-            pass
-        controls = []
-        # carregar acertos persistidos (prioriza armazenamento persistente)
-        acertos = self.perguntas_acertadas
-        if self.user_id:
-            try:
-                acertos = get_acertos_for_user(self.user_id) or []
-            except Exception:
-                pass
-        if not acertos:
-            controls.append(ft.Text("Nenhuma pergunta acertada ainda.", size=18, color=(colors.WHITE if colors is not None else None)))
-        else:
-            for idx, item in enumerate(acertos, start=1):
-                texto_pergunta = item.get("pergunta", "Pergunta sem texto")
-                texto_ajuda = item.get("ajuda", "Sem ajuda disponível.")
-                texto_correta = item.get("correta_texto", "")
-                bloco = ft.Container(
-                    content=ft.Column([
-                        ft.Text(f"{idx}. {texto_pergunta}", size=16, weight=ft.FontWeight.BOLD, selectable=True),
-                        ft.Text(f"Resposta correta: {texto_correta}", size=14, color=(colors.CYAN if colors is not None else None)),
-                        ft.Text(f"Ajuda dos Professores: {texto_ajuda}", size=14, selectable=True)
-                    ], spacing=6),
-                    padding=ft.padding.all(10),
-                    margin=ft.margin.only(bottom=8),
-                    bgcolor=(colors.BLUE_950 if colors is not None else None)
-                )
-                controls.append(bloco)
-
-        botao_voltar = ft.ElevatedButton("Voltar ao jogo", on_click=lambda _: self.tela_jogo(), width=200)
-        self.page.add(
-            ft.Container(
-                content=ft.Column(
-                    [ft.Text("Minhas Respostas", size=22, weight=ft.FontWeight.BOLD), *controls, botao_voltar],
-                    alignment=ft.MainAxisAlignment.START,
-                    spacing=12
-                ),
-                padding=ft.padding.all(20),
-                expand=True,
-                alignment=ft.alignment.center
-            )
-        )
-        try:
-            self.page.update()
-        except Exception:
-            pass
 
     # helpers de texto para dividir questão/ajuda
     def dividir_pergunta(self, texto, limite=90):
@@ -677,7 +518,6 @@ class ShowDoMilhao:
                     ft.Column([
                         self.label_pergunta,
                         *self.botoes,
-                        # incluir o botão de acertos ao lado das ajudas
                         ft.Row([self.botao_ajuda, self.botao_troca, self.botao_professor]),
                         self.label_feedback,
                         self.label_saldo,
@@ -777,125 +617,505 @@ class ShowDoMilhao:
     def verificar_resposta(self, escolha):
         for botao in self.botoes:
             botao.disabled = True
-        try:
-            correta = int(self.pergunta_atual["nova_correta"])
-        except Exception:
-            correta = None
-        if correta is None:
-            # não sabemos a correta; apenas avançar para próxima pergunta
-            try:
-                self.label_feedback.value = "Erro interno: pergunta sem alternativa correta."
-            except Exception:
-                pass
-            try:
-                self.page.update()
-            except Exception:
-                pass
-            return
-
+        correta = self.pergunta_atual["nova_correta"]
         if escolha == correta:
             try:
                 self.musica.tocar(2)
             except Exception:
                 pass
-            # registrar pergunta acertada (guarda texto da pergunta, ajuda e texto da resposta correta)
-            try:
-                correta_texto = ""
-                if isinstance(self.pergunta_atual.get("alternativas"), list) and isinstance(self.pergunta_atual.get("correta"), int):
-                    correta_texto = self.pergunta_atual["alternativas"][self.pergunta_atual["correta"]]
-                acerto_item = {
-                    "pergunta": self.pergunta_atual.get("pergunta", ""),
-                    "ajuda": self.pergunta_atual.get("ajuda", ""),
-                    "correta_texto": correta_texto
-                }
-                self.perguntas_acertadas.append(acerto_item)
-                try:
-                    if self.user_id:
-                        add_acerto_for_user(self.user_id, acerto_item)
-                except Exception:
-                    pass
-            except Exception:
-                pass
-
             self.pontos += 1000
             if (self.indice + 1) in [3, 5, 8]:
                 self.checkpoint = self.pontos
+            self.label_feedback.value = f"✅ Correto! Ganhou R$1000"
             try:
-                self.label_feedback.value = f"✅ Correto! Ganhou R$1000"
+                self.label_feedback.color = (colors.GREEN if colors is not None else None)
             except Exception:
                 pass
-            # avançar para próxima pergunta
+            self.label_saldo.value = f"Saldo atual: R${self.pontos}"
             self.indice += 1
-            if self.indice < len(self.perguntas_jogo):
-                try:
-                    self.carregar_pergunta()
-                except Exception:
-                    pass
-            else:
-                try:
-                    self.vitoria()
-                except Exception:
-                    pass
-        else:
-            # resposta incorreta: acionar rotina de derrota/atraso se existir
             try:
-                self.page.run_task(self._delay_derrota)
+                self.page.update()
             except Exception:
-                try:
-                    # fallback síncrono
-                    self._delay_derrota()
-                except Exception:
-                    pass
+                pass
+            self.page.run_task(self._delay_carregar_pergunta)
+        else:
+            self.page.run_task(self._delay_derrota)
         try:
             self.page.update()
         except Exception:
             pass
 
-# Adicionado: entrypoint e inicialização do servidor Flet (útil para deployment em Railway)
-def main(page: ft.Page):
-    """
-    Entrypoint para Flet. Cria a instância do jogo e exibe a tela inicial.
-    """
-    try:
-        # Opcional: definir título/cores padrão se necessário
+    async def _delay_carregar_pergunta(self):
+        import asyncio
+        await asyncio.sleep(1.5)
+        self.carregar_pergunta()
+
+    async def _delay_derrota(self):
+        import asyncio
+        await asyncio.sleep(0.5)
+        self.derrota()
+
+    def vitoria(self):
+        self.page.clean()
         try:
-            page.title = "Show do Coutão (Servidor)"
-            page.bgcolor = "#002e5c"
+            self.musica.tocar(4)
+        except Exception:
+            pass
+        msg = ft.Text(
+            f"🎉 Parabéns, você ganhou!\nSaiu com R${self.pontos}",
+            size=24,
+            color=(colors.YELLOW if colors is not None else None),
+            weight=ft.FontWeight.BOLD,
+            text_align=ft.TextAlign.CENTER
+        )
+        botao_voltar = ft.ElevatedButton(
+            "Voltar ao início",
+            bgcolor=(colors.BLUE if colors is not None else None),
+            color=(colors.WHITE if colors is not None else None),
+            on_click=lambda _: self.tela_inicial()
+        )
+        self.page.add(
+            ft.Container(
+                content=ft.Column([msg, botao_voltar], alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER),
+                alignment=ft.alignment.center,
+                expand=True
+            )
+        )
+
+    def derrota(self):
+        self.page.clean()
+        try:
+            self.musica.tocar(3)
+        except Exception:
+            pass
+        msg = ft.Text(
+            f"❌ Você perdeu!\nSaiu com R${self.checkpoint}",
+            size=24,
+            color=(colors.RED if colors is not None else None),
+            weight=ft.FontWeight.BOLD,
+            text_align=ft.TextAlign.CENTER
+        )
+        botao_voltar = ft.ElevatedButton(
+            "Voltar ao início",
+            bgcolor=(colors.BLUE if colors is not None else None),
+            color=(colors.WHITE if colors is not None else None),
+            on_click=lambda _: self.tela_inicial()
+        )
+        self.page.add(
+            ft.Container(
+                content=ft.Column([msg, botao_voltar], alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER),
+                alignment=ft.alignment.center,
+                expand=True
+            )
+        )
+
+    def desistir(self, e=None):
+        def confirmar_dlg(e):
+            if e.control.text == "Sim":
+                dlg.open = False
+                try:
+                    self.page.update()
+                except Exception:
+                    pass
+                self.page.dialog = None
+                if dlg in self.page.overlay:
+                    self.page.overlay.remove(dlg)
+                self.page.clean()
+                msg = ft.Text(
+                    f"💰 Você desistiu!\nSaiu com R${self.pontos}",
+                    size=24,
+                    color=(colors.ORANGE if colors is not None else None),
+                    weight=ft.FontWeight.BOLD,
+                    text_align=ft.TextAlign.CENTER
+                )
+                botao_voltar = ft.ElevatedButton(
+                    "Voltar ao início",
+                    bgcolor=(colors.BLUE if colors is not None else None),
+                    color=(colors.WHITE if colors is not None else None),
+                    on_click=lambda _: self.tela_inicial()
+                )
+                self.page.add(
+                    ft.Container(
+                        content=ft.Column([msg, botao_voltar], alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER),
+                        alignment=ft.alignment.center,
+                        expand=True
+                    )
+                )
+            else:
+                dlg.open = False
+                try:
+                    self.page.update()
+                except Exception:
+                    pass
+                self.page.dialog = None
+                if dlg in self.page.overlay:
+                    self.page.overlay.remove(dlg)
+        dlg = ft.AlertDialog(
+            title=ft.Text("Desistir?"),
+            content=ft.Text(f"Você deseja desistir e sair com R${self.pontos}?"),
+            actions=[
+                ft.TextButton("Sim", on_click=confirmar_dlg),
+                ft.TextButton("Não", on_click=confirmar_dlg)
+            ]
+        )
+        self.page.dialog = dlg
+        if dlg not in self.page.overlay:
+            self.page.overlay.append(dlg)
+        dlg.open = True
+        try:
+            self.page.update()
         except Exception:
             pass
 
-        # Cria a aplicação do jogo; ShowDoMilhao já executa tela_inicial no construtor
-        ShowDoMilhao(page)
+def show_control(page: ft.Page, control_callable):
+    """Limpa a página e adiciona um novo controle criado por control_callable().
+    control_callable deve ser uma função que retorna o controle (para evitar criar
+    controles antes da operação de limpeza em alguns ambientes).
+    """
+    try:
+        # limpar primeiro
+        try:
+            page.clean()
+        except Exception:
+            pass
+        # criar controle (callable para atrasar construção) e adicionar
+        control = control_callable()
+        page.add(control)
         try:
             page.update()
         except Exception:
             pass
-    except Exception as e:
-        # Log para diagnosticar problemas de startup
-        print("Erro durante inicialização da UI:", str(e))
-        import traceback
-        print(traceback.format_exc())
+    except Exception:
+        # última tentativa: limpar e adicionar um placeholder de entrada
+        try:
+            page.clean()
+        except Exception:
+            pass
+        try:
+            page.add(TelaEntrada(page, None))
+            try:
+                page.update()
+            except Exception:
+                pass
+        except Exception:
+            pass
+
+# Mover as classes TelaEntrada e TelaLogin para fora da função main
+class TelaEntrada(ft.UserControl):
+    def __init__(self, page, callback):
+        super().__init__()
+        self.page = page
+        self.callback = callback
+
+    def build(self):
+        btn_entrar = ft.ElevatedButton("Entrar", width=300, on_click=self.entrar)
+        btn_registrar = ft.ElevatedButton("Registrar", width=300, on_click=self.registrar)
+        btn_guest = ft.TextButton("Entrar sem conta", width=300, on_click=self.entrar_sem_conta)
+        col = ft.Column(
+            [
+                ft.Text("Bem-vindo", size=28, weight=ft.FontWeight.BOLD),
+                btn_entrar,
+                btn_registrar,
+                btn_guest
+            ],
+            alignment=ft.MainAxisAlignment.CENTER,
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            spacing=12
+        )
+        # Container expandido para centralizar verticalmente
+        return ft.Container(content=col, alignment=ft.alignment.center, expand=True)
+
+    def entrar(self, e):
+        try:
+            show_control(self.page, lambda: TelaLogin(self.page, self.callback))
+            return
+        except Exception:
+            pass
+        try:
+            self.page.clean()
+        except Exception:
+            pass
+        try:
+            self.page.add(TelaEntrada(self.page, self.callback))
+            self.page.update()
+        except Exception:
+            pass
+
+    def registrar(self, e):
+        try:
+            show_control(self.page, lambda: TelaRegistro(self.page, self.callback))
+            return
+        except Exception:
+            import traceback as _tb
+            tb = _tb.format_exc()
+            try:
+                _show_error_dialog(self.page, "Erro ao abrir Registro", tb)
+            except Exception:
+                pass
+        try:
+            self.page.clean()
+        except Exception:
+            pass
+        try:
+            self.page.add(TelaEntrada(self.page, self.callback))
+            self.page.update()
+        except Exception:
+            pass
+
+    # Novo: entrar como convidado (sem conta)
+    def entrar_sem_conta(self, e):
+        try:
+            # inicia o jogo diretamente como "convidado"
+            ShowDoMilhao(self.page, on_logout=lambda: show_control(self.page, lambda: TelaEntrada(self.page, self.callback)))
+            return
+        except Exception as ex:
+            try:
+                _show_error_dialog(self.page, "Erro ao entrar como convidado", str(ex))
+            except Exception:
+                pass
+        # fallback: voltar à tela de entrada
+        try:
+            show_control(self.page, lambda: TelaEntrada(self.page, self.callback))
+        except Exception:
+            pass
+
+# Novas classes adicionadas: TelaLogin e TelaRegistro
+class TelaLogin(ft.UserControl):
+    def __init__(self, page, callback):
+        super().__init__()
+        self.page = page
+        self.callback = callback
+        self.matricula = ft.TextField(label="Matrícula", width=320)
+        self.senha = ft.TextField(label="Senha", password=True, can_reveal_password=True, width=320)
+
+    def build(self):
+        btn_ok = ft.ElevatedButton("Entrar", width=320, on_click=self.on_entrar)
+        btn_voltar = ft.TextButton("Voltar", on_click=self.on_voltar)
+        col = ft.Column(
+            [
+                ft.Text("Login", size=24, weight=ft.FontWeight.BOLD),
+                self.matricula,
+                self.senha,
+                btn_ok,
+                btn_voltar
+            ],
+            alignment=ft.MainAxisAlignment.CENTER,
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            spacing=12
+        )
+        return ft.Container(content=col, alignment=ft.alignment.center, expand=True)
+
+    def on_entrar(self, e):
+        matricula = (self.matricula.value or "").strip()
+        senha = (self.senha.value or "").strip()
+        if not matricula or not senha:
+            _show_error_dialog(self.page, "Dados incompletos", "Informe matrícula e senha.")
+            return
+        try:
+            ok, resp = login_usuario(matricula, senha)
+        except Exception as ex:
+            _show_error_dialog(self.page, "Erro de rede", str(ex))
+            return
+        if ok:
+            try:
+                # Se resp for dict com dados do usuário, poderia-se armazenar se necessário
+                ShowDoMilhao(self.page, on_logout=lambda: show_control(self.page, lambda: TelaEntrada(self.page, self.callback)))
+                return
+            except Exception as ex:
+                _show_error_dialog(self.page, "Erro ao iniciar jogo", str(ex))
+        else:
+            # resp pode ser dict ou texto; transformar em mensagem legível
+            msg = resp
+            try:
+                if isinstance(resp, dict):
+                    msg = json.dumps(resp, ensure_ascii=False)
+                else:
+                    msg = str(resp)
+            except Exception:
+                msg = str(resp)
+            _show_error_dialog(self.page, "Login falhou", msg)
+
+    def on_voltar(self, e):
+        try:
+            show_control(self.page, lambda: TelaEntrada(self.page, self.callback))
+        except Exception:
+            try:
+                self.page.clean()
+            except Exception:
+                pass
+            try:
+                self.page.add(TelaEntrada(self.page, self.callback))
+                self.page.update()
+            except Exception:
+                pass
+
+
+class TelaRegistro(ft.UserControl):
+    def __init__(self, page, callback):
+        super().__init__()
+        self.page = page
+        self.callback = callback
+        self.nome = ft.TextField(label="Nome", width=320)
+        self.matricula = ft.TextField(label="Matrícula", width=320)
+        self.email = ft.TextField(label="Email", width=320)
+        self.senha = ft.TextField(label="Senha", password=True, can_reveal_password=True, width=320)
+
+    def build(self):
+        btn_reg = ft.ElevatedButton("Registrar", width=320, on_click=self.on_registrar)
+        btn_voltar = ft.TextButton("Voltar", on_click=self.on_voltar)
+        col = ft.Column(
+            [
+                ft.Text("Registrar", size=24, weight=ft.FontWeight.BOLD),
+                self.nome,
+                self.matricula,
+                self.email,
+                self.senha,
+                btn_reg,
+                btn_voltar
+            ],
+            alignment=ft.MainAxisAlignment.CENTER,
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            spacing=10
+        )
+        return ft.Container(content=col, alignment=ft.alignment.center, expand=True)
+
+    def on_registrar(self, e):
+        nome = (self.nome.value or "").strip()
+        matricula = (self.matricula.value or "").strip()
+        email = (self.email.value or "").strip()
+        senha = (self.senha.value or "").strip()
+        try:
+            ok, resp = registrar_usuario(nome, matricula, email, senha)
+        except Exception as ex:
+            _show_error_dialog(self.page, "Erro de rede", str(ex))
+            return
+        if ok:
+            try:
+                _show_error_dialog(self.page, "Registro OK", "Usuário registrado com sucesso. Faça login.")
+            except Exception:
+                pass
+            try:
+                show_control(self.page, lambda: TelaLogin(self.page, self.callback))
+            except Exception:
+                pass
+        else:
+            _show_error_dialog(self.page, "Registro falhou", str(resp))
+
+    def on_voltar(self, e):
+        try:
+            show_control(self.page, lambda: TelaEntrada(self.page, self.callback))
+        except Exception:
+            pass
+def _show_error_dialog(page: ft.Page, title: str, message: str):
+    try:
+        dlg = ft.AlertDialog(
+            title=ft.Text(title),
+            content=ft.Text(str(message)[:1000]),
+            actions=[ft.TextButton("OK", on_click=lambda e: _close_dialog(page, dlg))]
+        )
+        page.dialog = dlg
+        if dlg not in page.overlay:
+            page.overlay.append(dlg)
+        dlg.open = True
+        try:
+            page.update()
+        except Exception:
+            pass
+    except Exception:
+        pass
+
+
+def _close_dialog(page, dlg):
+    try:
+        dlg.open = False
+        page.dialog = None
+        if dlg in page.overlay:
+            page.overlay.remove(dlg)
+        try:
+            page.update()
+        except Exception:
+            pass
+    except Exception:
+        pass
+
+
+def main(page: ft.Page):
+    # define cor de fundo já na entrada para evitar tela cinza em formulários
+    try:
+        page.bgcolor = "#002e5c"
+    except Exception:
+        pass
+
+    def iniciar_jogo():
+        try:
+            page.clean()
+        except Exception:
+            pass
+
+        # função para retornar à tela de entrada (login/registro)
+        def show_entry():
+            try:
+                page.clean()
+            except Exception:
+                pass
+            page.add(TelaEntrada(page, iniciar_jogo))
+
+        try:
+            # envolver toda inicialização do jogo em try/except para capturar erros
+            # aqui simplesmente mostramos a tela de entrada (registro/login)
+            show_entry()
+            try:
+                page.update()
+            except Exception:
+                pass
+        except Exception:
+            try:
+                import traceback as _tb
+                tb = _tb.format_exc()
+            except Exception:
+                tb = "Erro desconhecido"
+            try:
+                _show_error_dialog(page, "Erro ao iniciar interface", tb)
+            except Exception:
+                pass
+
+    # inicialização padrão quando a app é aberta
+    try:
+        # mostra a tela de entrada e passa o callback iniciar_jogo
+        page.add(TelaEntrada(page, iniciar_jogo))
+        try:
+            page.update()
+        except Exception:
+            pass
+    except Exception:
+        try:
+            import traceback as _tb
+            tb = _tb.format_exc()
+        except Exception:
+            tb = "Erro desconhecido"
+        try:
+            _show_error_dialog(page, "Erro na inicialização", tb)
+        except Exception:
+            pass
+
 
 if __name__ == "__main__":
-    # Porta que o Railway (ou outro PaaS) fornece via env var PORT
-    try:
-        port_env = os.environ.get("PORT") or os.environ.get("PORT0") or "8550"
-        port = int(port_env)
-    except Exception:
-        port = 8550
+    # Usa a porta do Railway se existir
+    port = os.environ.get("PORT")
 
-    assets = str(Path(__file__).parent)
-
-    print(f"Iniciando Flet app em 0.0.0.0:{port} com assets_dir={assets}")
-    try:
+    if port:
+        # 🌐 Modo WEB (Railway ou celular)
         ft.app(
             target=main,
             view=ft.WEB_BROWSER,
+            port=int(port),
             host="0.0.0.0",
-            port=port,
-            assets_dir=assets
+            assets_dir="."    # ✅ preciso para logo e audio funcionarem
         )
-    except Exception as e:
-        print("Falha ao iniciar ft.app():", str(e))
-        import traceback
-        print(traceback.format_exc())
+    else:
+        # 💻 Modo APP (rodando no PC local)
+        ft.app(
+            target=main,
+            view=ft.APP,      # ✅ importante para gerar APK e rodar localmente
+            assets_dir="."    # ✅ necessário para carregar logo.png
+        )
