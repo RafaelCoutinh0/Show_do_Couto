@@ -21,31 +21,57 @@ def hash_senha(senha: str) -> str:
 def registrar_usuario(nome, matricula, email, senha):
     payload = {
         "action": "register",
-        "nome": nome,
-        "matricula": matricula,
-        "email": email,
-        "senha": senha
+        "nome": (nome or "").strip(),
+        "matricula": (matricula or "").strip(),
+        "email": (email or "").strip(),
+        "senha": (senha or "").strip()
     }
-
     try:
         r = requests.post(GS_URL, json=payload, timeout=10)
-        return r.text == "REGISTER_OK"
-    except:
-        return False
+        if r.status_code != 200:
+            return (False, f"HTTP {r.status_code}: {r.text}")
+        try:
+            data = r.json()
+            if isinstance(data, dict) and data.get('success') in (True, 'true', 'True', 1):
+                return (True, data)
+            msg = str(data.get('message') or '')
+            if 'REGISTER_OK' in msg or msg.upper() in ('OK', 'SUCCESS'):
+                return (True, data)
+            return (False, data)
+        except Exception:
+            text = (r.text or '').strip()
+            if 'REGISTER_OK' in text or text.upper() in ('OK','SUCCESS'):
+                return (True, r.text)
+            return (False, r.text)
+    except Exception as e:
+        return (False, str(e))
 
 
 def login_usuario(matricula, senha):
     params = {
         "action": "login",
-        "matricula": matricula,
-        "senha": senha
+        "matricula": (matricula or "").strip(),
+        "senha": (senha or "").strip()
     }
-
     try:
         r = requests.get(GS_URL, params=params, timeout=10)
-        return r.text == "LOGIN_OK"
-    except:
-        return False
+        if r.status_code != 200:
+            return (False, f"HTTP {r.status_code}: {r.text}")
+        try:
+            data = r.json()
+            if isinstance(data, dict) and data.get('success') in (True, 'true', 'True', 1):
+                return (True, data)
+            msg = str(data.get('message') or '').upper()
+            if 'LOGIN_OK' in msg or msg in ('OK','SUCCESS'):
+                return (True, data)
+            return (False, data)
+        except Exception:
+            text = (r.text or '').strip().upper()
+            if 'LOGIN_OK' in text or text == 'OK' or 'SUCCESS' in text:
+                return (True, r.text)
+            return (False, r.text)
+    except Exception as e:
+        return (False, str(e))
 
 
 # Compatibilidade com cores entre versões:
@@ -129,79 +155,164 @@ class MusicaPlayer:
             # não deixar quebrar a aplicação por erro de áudio
             print("Erro ao tocar áudio:", traceback.format_exc())
 
-class TelaRegistro(ft.Column):
-    def __init__(self, app):
+class TelaRegistro(ft.UserControl):
+    def __init__(self, page, callback):
         super().__init__()
-        self.app = app
+        self.page = page
+        self.callback = callback
+        self.nome = ft.TextField(label="Nome", width=300)
+        self.matricula = ft.TextField(label="Matrícula", width=300)
+        self.email = ft.TextField(label="Email", width=300)
+        self.senha = ft.TextField(label="Senha", password=True, can_reveal_password=True, width=300)
 
-        self.nome = ft.TextField(label="Nome")
-        self.matricula = ft.TextField(label="Matrícula")
-        self.email = ft.TextField(label="Email")
-        self.senha = ft.TextField(label="Senha", password=True, can_reveal_password=True)
-
-        self.controls = [
-            ft.Text("Criar conta", size=30, weight="bold"),
+    def build(self):
+        col = ft.Column([
+            ft.Text("Registro", size=30, weight=ft.FontWeight.BOLD),
             self.nome,
             self.matricula,
             self.email,
             self.senha,
-            ft.ElevatedButton("Registrar", on_click=self.on_registrar),
+            ft.ElevatedButton("Registrar", on_click=self.on_registrar, width=300),
             ft.TextButton("Já tenho conta", on_click=self.on_go_login)
-        ]
+        ], alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=12)
+        return ft.Container(content=col, alignment=ft.alignment.center, expand=True, padding=ft.padding.all(20))
 
-    def on_registrar(self, e):
-        ok = registrar_usuario(
-            self.nome.value,
-            self.matricula.value,
-            self.email.value,
-            self.senha.value
-        )
+    def on_go_login(self, e=None):
+        try:
+            self.page.clean()
+        except Exception:
+            pass
+        self.page.add(TelaLogin(self.page, self.callback))
 
-        if ok:
-            self.app.page.snack_bar = ft.SnackBar(ft.Text("✅ Conta criada com sucesso"))
-            self.app.page.snack_bar.open = True
-            self.app.tela_login()
-        else:
-            self.app.page.snack_bar = ft.SnackBar(ft.Text("❌ Erro ao registrar"))
-            self.app.page.snack_bar.open = True
+    def on_registrar(self, e=None):
+        # run in background to avoid freezing UI
+        try:
+            self.page.run_task(self._do_registrar)
+        except Exception:
+            # fallback synchronous (may freeze)
+            ok, resp = registrar_usuario(self.nome.value, self.matricula.value, self.email.value, self.senha.value)
+            if ok:
+                try:
+                    self.page.snack_bar = ft.SnackBar(ft.Text("✅ Registrado com sucesso"))
+                    self.page.snack_bar.open = True
+                except Exception:
+                    pass
+                try:
+                    self.page.clean()
+                except Exception:
+                    pass
+                try:
+                    self.callback()
+                except Exception:
+                    pass
+            else:
+                try:
+                    self.page.snack_bar = ft.SnackBar(ft.Text(f"❌ Erro ao registrar: {str(resp)[:200]}"))
+                    self.page.snack_bar.open = True
+                except Exception:
+                    pass
+            try:
+                self.page.update()
+            except Exception:
+                pass
 
-        self.app.page.update()
+    async def _do_registrar(self):
+        import asyncio
+        ok, resp = await asyncio.to_thread(registrar_usuario, self.nome.value, self.matricula.value, self.email.value, self.senha.value)
+        try:
+            if ok:
+                self.page.snack_bar = ft.SnackBar(ft.Text("✅ Registrado com sucesso"))
+                self.page.snack_bar.open = True
+                try:
+                    self.page.clean()
+                except Exception:
+                    pass
+                try:
+                    self.callback()
+                except Exception:
+                    pass
+            else:
+                self.page.snack_bar = ft.SnackBar(ft.Text(f"❌ Erro ao registrar: {str(resp)[:200]}"))
+                self.page.snack_bar.open = True
+            try:
+                self.page.update()
+            except Exception:
+                pass
+        except Exception as e:
+            print('Erro _do_registrar:', e)
 
-    def on_go_login(self, e):
-        self.app.tela_login()
 
-
-class TelaLogin(ft.Column):
-    def __init__(self, app):
+class TelaLogin(ft.UserControl):
+    def __init__(self, page, callback):
         super().__init__()
-        self.app = app
+        self.page = page
+        self.callback = callback
+        self.matricula = ft.TextField(label="Matrícula", width=300)
+        self.senha = ft.TextField(label="Senha", password=True, can_reveal_password=True, width=300)
 
-        self.matricula = ft.TextField(label="Matrícula")
-        self.senha = ft.TextField(label="Senha", password=True, can_reveal_password=True)
-
-        self.controls = [
-            ft.Text("Login", size=30, weight="bold"),
+    def build(self):
+        col = ft.Column([
+            ft.Text("Login", size=30, weight=ft.FontWeight.BOLD),
             self.matricula,
             self.senha,
-            ft.ElevatedButton("Entrar", on_click=self.on_login),
-            ft.TextButton("Criar conta", on_click=self.on_go_registro)
-        ]
+            ft.ElevatedButton("Entrar", on_click=self.on_login, width=300),
+            ft.TextButton("Criar nova conta", on_click=self.on_go_registro)
+        ], alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=12)
+        return ft.Container(content=col, alignment=ft.alignment.center, expand=True, padding=ft.padding.all(20))
 
-    def on_login(self, e):
-        ok = login_usuario(self.matricula.value, self.senha.value)
+    def on_go_registro(self, e=None):
+        try:
+            self.page.clean()
+        except Exception:
+            pass
+        self.page.add(TelaRegistro(self.page, self.callback))
 
-        if ok:
-            self.app.page.snack_bar = ft.SnackBar(ft.Text("✅ Login OK"))
-            self.app.page.snack_bar.open = True
-            self.app.tela_inicial()
-        else:
-            self.app.page.snack_bar = ft.SnackBar(ft.Text("❌ Matrícula ou senha incorretas"))
-            self.app.page.snack_bar.open = True
+    def on_login(self, e=None):
+        try:
+            self.page.run_task(self._do_login)
+        except Exception:
+            ok, resp = login_usuario(self.matricula.value, self.senha.value)
+            if ok:
+                try:
+                    self.page.snack_bar = ft.SnackBar(ft.Text("✅ Login OK"))
+                    self.page.snack_bar.open = True
+                except Exception:
+                    pass
+                try:
+                    self.callback()
+                except Exception:
+                    pass
+            else:
+                try:
+                    self.page.snack_bar = ft.SnackBar(ft.Text(f"❌ Matrícula ou senha incorretas: {str(resp)[:200]}"))
+                    self.page.snack_bar.open = True
+                except Exception:
+                    pass
+            try:
+                self.page.update()
+            except Exception:
+                pass
 
-        self.app.page.update()
-
-    def on_go_registro(self, e):
-        self.app.tela_registro()
+    async def _do_login(self):
+        import asyncio
+        ok, resp = await asyncio.to_thread(login_usuario, self.matricula.value, self.senha.value)
+        try:
+            if ok:
+                self.page.snack_bar = ft.SnackBar(ft.Text("✅ Login OK"))
+                self.page.snack_bar.open = True
+                try:
+                    self.callback()
+                except Exception:
+                    pass
+            else:
+                self.page.snack_bar = ft.SnackBar(ft.Text(f"❌ Matrícula ou senha incorretas: {str(resp)[:200]}"))
+                self.page.snack_bar.open = True
+            try:
+                self.page.update()
+            except Exception:
+                pass
+        except Exception as e:
+            print('Erro _do_login:', e)
 
 class ShowDoMilhao:
     def __init__(self, page: ft.Page, on_logout=None):
