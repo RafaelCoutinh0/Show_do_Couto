@@ -850,3 +850,52 @@ class ShowDoMilhao:
             self.page.update()
         except Exception:
             pass
+
+# Adicionado: entrypoint e inicialização do servidor Flet (útil para deployment em Railway)
+def main(page: ft.Page):
+    """
+    Entrypoint para Flet. Cria a instância do jogo e exibe a tela inicial.
+    """
+    try:
+        # Opcional: definir título/cores padrão se necessário
+        try:
+            page.title = "Show do Coutão (Servidor)"
+            page.bgcolor = "#002e5c"
+        except Exception:
+            pass
+
+        # Cria a aplicação do jogo; ShowDoMilhao já executa tela_inicial no construtor
+        ShowDoMilhao(page)
+        try:
+            page.update()
+        except Exception:
+            pass
+    except Exception as e:
+        # Log para diagnosticar problemas de startup
+        print("Erro durante inicialização da UI:", str(e))
+        import traceback
+        print(traceback.format_exc())
+
+if __name__ == "__main__":
+    # Porta que o Railway (ou outro PaaS) fornece via env var PORT
+    try:
+        port_env = os.environ.get("PORT") or os.environ.get("PORT0") or "8550"
+        port = int(port_env)
+    except Exception:
+        port = 8550
+
+    assets = str(Path(__file__).parent)
+
+    print(f"Iniciando Flet app em 0.0.0.0:{port} com assets_dir={assets}")
+    try:
+        ft.app(
+            target=main,
+            view=ft.WEB_BROWSER,
+            host="0.0.0.0",
+            port=port,
+            assets_dir=assets
+        )
+    except Exception as e:
+        print("Falha ao iniciar ft.app():", str(e))
+        import traceback
+        print(traceback.format_exc())
