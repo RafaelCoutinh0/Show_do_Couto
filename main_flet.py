@@ -209,22 +209,53 @@ class TelaRegistro(ft.UserControl):
         ok, msg = register_local(nome, matricula, email, senha)
         if ok:
             try:
-                # enviar também a senha para o Sheets
-                registrar_usuario_com_senha(nome, matricula, email, senha)
-            except Exception:
-                pass
-            # sucesso: inicia o jogo
+                # enviar também a senha para o Sheets e verificar resposta
+                resp = registrar_usuario_com_senha(nome, matricula, email, senha)
+            except Exception as ex:
+                resp = None
+                print("Erro ao chamar registrar_usuario_com_senha:", ex)
+
+            # avalia resposta do webhook
+            sucesso_remoto = False
+            detalhe = ""
+            if resp is None:
+                detalhe = "Sem resposta do servidor (exceção)."
+            else:
+                try:
+                    status = int(getattr(resp, 'status_code', 0) or 0)
+                    corpo = (getattr(resp, 'text', '') or '').strip()
+                    detalhe = f"status={status} body={corpo[:200]}"
+                    if status == 200 and ("REGISTER_OK" in corpo or "REGISTER_OK" in corpo.upper() or "OK" in corpo):
+                        sucesso_remoto = True
+                except Exception:
+                    detalhe = f"Resposta inesperada: {resp}"
+
+            if not sucesso_remoto:
+                # mostra diálogo de erro e não entra no jogo
+                dlg = ft.AlertDialog(title=ft.Text("Erro no registro"), content=ft.Text(f"Não foi possível registrar no servidor. {detalhe}"), actions=[ft.TextButton("OK", on_click=lambda e: self._fechar_dialog(dlg))])
+                self.page.dialog = dlg
+                if dlg not in self.page.overlay:
+                    self.page.overlay.append(dlg)
+                dlg.open = True
+                try:
+                    self.page.update()
+                except Exception:
+                    pass
+                return
+
+            # sucesso local e remoto: inicia o jogo
             self.callback()
         else:
-            dlg = ft.AlertDialog(title=ft.Text("Erro"), content=ft.Text(msg), actions=[ft.TextButton("OK", on_click=lambda e: self._fechar_dialog(dlg))])
-            self.page.dialog = dlg
-            if dlg not in self.page.overlay:
-                self.page.overlay.append(dlg)
-            dlg.open = True
-            try:
-                self.page.update()
-            except Exception:
-                pass
+             dlg = ft.AlertDialog(title=ft.Text("Erro"), content=ft.Text(msg), actions=[ft.TextButton("OK", on_click=lambda e: self._fechar_dialog(dlg))])
+             self.page.dialog = dlg
+             if dlg not in self.page.overlay:
+                 self.page.overlay.append(dlg)
+             dlg.open = True
+             try:
+                 self.page.update()
+             except Exception:
+                 pass
+             return
 
 class ShowDoMilhao:
     def __init__(self, page: ft.Page, on_logout=None):
@@ -335,26 +366,46 @@ class ShowDoMilhao:
         self.page.add(ft.Container(content=col, alignment=ft.alignment.center, expand=True))
 
     def iniciar_jogo(self, e=None):
+        import traceback as _tb
+        print("[DEBUG] iniciar_jogo chamado")
         try:
-            self.musica.tocar(1)
-        except Exception:
-            pass
-        self.pontos = 0
-        # inicia jogo: limpar página e construir a interface do jogo
-        try:
-            self.page.clean()
-        except Exception:
-            pass
-        self.ajuda_usada = False
-        self.troca_usada = False
-        self.ajuda_professor_usada = False
-        # importa perguntas dinamicamente para evitar import circular no topo
-        try:
-            from perguntas import facil
-            self.perguntas_jogo = random.sample(facil, min(10, len(facil)))
-        except Exception:
-            self.perguntas_jogo = []
-        self.tela_jogo()
+            try:
+                self.musica.tocar(1)
+            except Exception:
+                pass
+            self.pontos = 0
+            # inicia jogo: limpar página e construir a interface do jogo
+            try:
+                self.page.clean()
+            except Exception:
+                pass
+            self.ajuda_usada = False
+            self.troca_usada = False
+            self.ajuda_professor_usada = False
+            # importa perguntas dinamicamente para evitar import circular no topo
+            try:
+                from perguntas import facil
+                self.perguntas_jogo = random.sample(facil, min(10, len(facil)))
+            except Exception:
+                self.perguntas_jogo = []
+            self.tela_jogo()
+        except Exception as exc:
+            tb = _tb.format_exc()
+            print("[ERROR] Exception em iniciar_jogo:\n", tb)
+            # mostra diálogo com erro para evitar tela cinza
+            try:
+                dlg = ft.AlertDialog(title=ft.Text("Erro ao iniciar jogo"), content=ft.Text("Ocorreu um erro ao iniciar o jogo. Veja o console."), actions=[ft.TextButton("OK", on_click=lambda e: self._fechar_dialog(dlg))])
+                self.page.dialog = dlg
+                if dlg not in self.page.overlay:
+                    self.page.overlay.append(dlg)
+                dlg.open = True
+                try:
+                    self.page.update()
+                except Exception:
+                    pass
+            except Exception:
+                pass
+            return
 
     def tela_jogo(self):
         self.page.clean()
