@@ -8,7 +8,6 @@ import requests
 import json
 import base64
 from pathlib import Path
-import hashlib
 
 WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbwIVi_uiA-MFKIpwsjH9oQuLnmjxt2WOJKan5KbTYiuLCjjkkVlqbaVCga3TywM2mw_8A/exec"
 
@@ -42,16 +41,19 @@ def registrar_usuario(nome, matricula, email, senha):
         return (False, str(e))
 
 def login_usuario(matricula, senha):
-    """Tenta login no webhook. Retorna (sucesso:bool, resposta:str)."""
+    """Tenta login no webhook. Retorna (sucesso:bool, resposta:str).
+
+    ALTERAÇÃO: usar GET para evitar que o webhook interprete a chamada como escrita
+    (alguns endpoints de Google Apps Script gravam apenas em requisições POST)."""
     payload = {
         "action": "login",
         "matricula": (matricula or "").strip(),
         "senha": hash_senha(senha)
     }
     try:
-        headers = {"Content-Type": "application/json"}
-        r = requests.post(WEBHOOK_URL, data=json.dumps(payload), headers=headers, timeout=10)
-        print("DEBUG payload login:", payload)
+        # usar GET com params para requisição de leitura (não deve causar escrita no Sheets)
+        r = requests.get(WEBHOOK_URL, params=payload, timeout=10)
+        print("DEBUG payload login (GET):", payload)
         print("DEBUG login (status):", r.status_code, "body:", r.text)
         if r.status_code == 200:
             return (True, r.text)
