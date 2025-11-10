@@ -48,16 +48,33 @@ def authenticate(matricula, senha):
     return True, u
 
 def registrar_usuario(nome, matricula, email):
+    # Mantido por retrocompatibilidade: se chamada sem senha, envia sem campo 'senha'
     try:
         data = {
+            "action": "register",
             "nome": nome,
             "matricula": matricula,
-            "email": email
+            "email": email,
+            # 'senha' pode ser ausente se não informada; prefira usar registrar_usuario(nome, matricula, email, senha)
         }
         requests.post(WEBHOOK_URL, json=data)
-        print("✅ Registro enviado com sucesso!")
+        print("✅ Registro enviado com sucesso (sem senha)!")
     except Exception as e:
         print("❌ Erro ao enviar o registro:", e)
+
+def registrar_usuario_com_senha(nome, matricula, email, senha):
+    try:
+        data = {
+            "action": "register",
+            "nome": nome,
+            "matricula": matricula,
+            "email": email,
+            "senha": senha
+        }
+        requests.post(WEBHOOK_URL, json=data)
+        print("✅ Registro enviado com sucesso (com senha)!")
+    except Exception as e:
+        print("❌ Erro ao enviar o registro com senha:", e)
 
 # Compatibilidade com cores entre versões:
 try:
@@ -188,7 +205,8 @@ class TelaRegistro(ft.UserControl):
         ok, msg = register_local(nome, matricula, email, senha)
         if ok:
             try:
-                registrar_usuario(nome, matricula, email)
+                # enviar também a senha para o Sheets
+                registrar_usuario_com_senha(nome, matricula, email, senha)
             except Exception:
                 pass
             # sucesso: inicia o jogo
@@ -302,8 +320,8 @@ class ShowDoMilhao:
         except Exception:
             pass
         self.pontos = 0
-        self.checkpoint = 0
-        self.indice = 0
+        # garantir centralização vertical/horizontal usando Container
+        self.page.add(ft.Container(content=col, alignment=ft.alignment.center, expand=True))
         self.ajuda_usada = False
         self.troca_usada = False
         self.ajuda_professor_usada = False
@@ -739,7 +757,7 @@ def main(page: ft.Page):
 
         def registrar(self, e):
             self.page.clean()
-            self.page.add(TelaRegistro(self.page, self.callback))
+            return ft.Container(content=col, alignment=ft.alignment.center, expand=True)
 
     class TelaLogin(ft.UserControl):
         def __init__(self, page, callback):
