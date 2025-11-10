@@ -18,7 +18,10 @@ def hash_senha(senha: str) -> str:
     return s
 
 def registrar_usuario(nome, matricula, email, senha):
-    """Envia registro ao webhook. Retorna (sucesso:bool, resposta:str)."""
+    """Envia registro ao webhook. Retorna (sucesso:bool, resposta:str).
+
+    Valida o corpo da resposta para aceitar somente confirmações explícitas de registro.
+    """
     payload = {
         "action": "register",
         "nome": (nome or "").strip(),
@@ -31,11 +34,24 @@ def registrar_usuario(nome, matricula, email, senha):
         headers = {"Content-Type": "application/json"}
         r = requests.post(WEBHOOK_URL, data=json.dumps(payload), headers=headers, timeout=10)
         print("DEBUG registro (status):", r.status_code, "body:", r.text)
-        if r.status_code == 200:
-            # aceitar 200 como sucesso mesmo se o corpo não contiver REGISTER_OK
-            return (True, r.text)
-        else:
+        if r.status_code != 200:
             return (False, f"HTTP {r.status_code}: {r.text}")
+        # tentar interpretar JSON
+        try:
+            data = r.json()
+            if isinstance(data, dict) and data.get("success") in (True, "true", "True", 1):
+                return (True, r.text)
+            # aceitar message ou status explícitos
+            msg = str(data.get("message") or "").upper()
+            if "REGISTER_OK" in msg or msg in ("OK", "SUCCESS"):
+                return (True, r.text)
+            return (False, r.text)
+        except Exception:
+            # não é JSON: analisar texto simples
+            text = (r.text or "").strip().upper()
+            if "REGISTER_OK" in text or text == "OK" or "SUCCESS" in text:
+                return (True, r.text)
+            return (False, r.text)
     except Exception as e:
         print("ERRO REGISTRO:", e)
         return (False, str(e))
