@@ -223,10 +223,12 @@ class TelaRegistro(ft.UserControl):
                 pass
 
 class ShowDoMilhao:
-    def __init__(self, page: ft.Page):
+    def __init__(self, page: ft.Page, on_logout=None):
         self.page = page
-        self.page.title = "Show do Coutão"
+        # callback para voltar à tela de entrada (login/registro)
+        self.on_logout = on_logout
         try:
+            self.page.title = "Show do Coutão"
             self.page.bgcolor = "#002e5c"
         except Exception:
             pass
@@ -320,8 +322,11 @@ class ShowDoMilhao:
         except Exception:
             pass
         self.pontos = 0
-        # garantir centralização vertical/horizontal usando Container
-        self.page.add(ft.Container(content=col, alignment=ft.alignment.center, expand=True))
+        # inicia jogo: limpar página e construir a interface do jogo
+        try:
+            self.page.clean()
+        except Exception:
+            pass
         self.ajuda_usada = False
         self.troca_usada = False
         self.ajuda_professor_usada = False
@@ -740,7 +745,15 @@ def main(page: ft.Page):
         pass
     def iniciar_jogo():
         page.clean()
-        ShowDoMilhao(page)
+        # função para retornar à tela de entrada (login/registro)
+        def show_entry():
+            try:
+                page.clean()
+            except Exception:
+                pass
+            page.add(TelaEntrada(page, iniciar_jogo))
+
+        ShowDoMilhao(page, on_logout=show_entry)
 
     # Tela inicial: escolher entrar ou registrar
     class TelaEntrada(ft.UserControl):
