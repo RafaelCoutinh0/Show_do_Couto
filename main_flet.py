@@ -8,31 +8,12 @@ import requests
 import json
 import base64
 from pathlib import Path
-import requests
 import hashlib
 
 WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbwIVi_uiA-MFKIpwsjH9oQuLnmjxt2WOJKan5KbTYiuLCjjkkVlqbaVCga3TywM2mw_8A/exec"
 
 def hash_senha(senha: str) -> str:
     return hashlib.sha256(senha.strip().encode("utf-8")).hexdigest()
-
-
-def register_local(nome, matricula, email, senha):
-    users = load_users()
-    if matricula in users:
-        return False, "Matrícula já registrada"
-    users[matricula] = {"nome": nome, "email": email, "senha": senha}
-    save_users(users)
-    return True, "Cadastro realizado"
-
-def authenticate(matricula, senha):
-    users = load_users()
-    u = users.get(matricula)
-    if not u:
-        return False, "Matrícula não encontrada"
-    if u.get("senha") != senha:
-        return False, "Senha incorreta"
-    return True, u
 
 def registrar_usuario(nome, matricula, email, senha):
     payload = {
@@ -49,24 +30,6 @@ def registrar_usuario(nome, matricula, email, senha):
     except Exception as e:
         print("ERRO REGISTRO:", e)
         return False
-
-
-def registrar_usuario_com_senha(nome, matricula, email, senha):
-    try:
-        data = {
-            "action": "register",
-            "nome": nome,
-            "matricula": matricula,
-            "email": email,
-            "senha": senha
-        }
-        headers = {"Content-Type": "application/json"}
-        resp = requests.post(WEBHOOK_URL, json=data, headers=headers, timeout=10)
-        print("✅ Registro enviado (com senha):", resp.status_code, resp.text)
-        return resp
-    except Exception as e:
-        print("❌ Erro ao enviar o registro com senha:", e)
-        return None
 
 def login_usuario(matricula, senha):
     payload = {
@@ -163,30 +126,14 @@ class MusicaPlayer:
             # não deixar quebrar a aplicação por erro de áudio
             print("Erro ao tocar áudio:", traceback.format_exc())
 
-class TelaInicial(ft.UserControl):
-    def __init__(self, page, go_login, go_registro):
-        super().__init__()
-        self.page = page
-        self.go_login = go_login
-        self.go_registro = go_registro
-
-    def build(self):
-        return ft.Column(
-            [
-                ft.Text("Show do Couto", size=38, weight=ft.FontWeight.BOLD),
-                ft.ElevatedButton("Entrar", on_click=lambda e: self.go_login()),
-                ft.TextButton("Registrar", on_click=lambda e: self.go_registro())
-            ],
-            alignment="center",
-            horizontal_alignment="center"
-        )
 
 class TelaRegistro(ft.UserControl):
-    def __init__(self, page, go_login, go_jogo):
+    def __init__(self, page, callback):
         super().__init__()
         self.page = page
-        self.go_login = go_login
-        self.go_jogo = go_jogo
+        self.callback = callback
+        self.go_login = lambda: self.page.add(TelaLogin(self.page, self.callback))
+        self.go_jogo = self.callback
 
         self.nome = ft.TextField(label="Nome", width=300)
         self.matricula = ft.TextField(label="Matrícula", width=300)
@@ -224,11 +171,12 @@ class TelaRegistro(ft.UserControl):
             self.page.snack_bar.open = True
         self.page.update()
 class TelaLogin(ft.UserControl):
-    def __init__(self, page, go_registro, go_jogo):
+    def __init__(self, page, callback):
         super().__init__()
         self.page = page
-        self.go_registro = go_registro
-        self.go_jogo = go_jogo
+        self.callback = callback
+        self.go_registro = lambda: self.page.add(TelaRegistro(self.page, self.callback))
+        self.go_jogo = self.callback
 
         self.matricula = ft.TextField(label="Matrícula", width=300)
         self.senha = ft.TextField(label="Senha", width=300, password=True, can_reveal_password=True)
@@ -840,6 +788,9 @@ class TelaLogin(ft.UserControl):
         super().__init__()
         self.page = page
         self.callback = callback
+        self.go_registro = lambda: self.page.add(TelaRegistro(self.page, self.callback))
+        self.go_jogo = self.callback
+
         self.matricula = ft.TextField(label="Matrícula", width=300)
         self.senha = ft.TextField(label="Senha", password=True, can_reveal_password=True, width=300)
 
@@ -852,12 +803,12 @@ class TelaLogin(ft.UserControl):
     def entrar(self, e):
         matricula = (self.matricula.value or "").strip()
         senha = (self.senha.value or "").strip()
-        ok, resp = authenticate(matricula, senha)
+        ok = login_usuario(matricula, senha)
         if ok:
             # login ok
             self.callback()
         else:
-            dlg = ft.AlertDialog(title=ft.Text("Erro"), content=ft.Text(resp), actions=[ft.TextButton("OK", on_click=lambda e: self._fechar_dialog(dlg))])
+            dlg = ft.AlertDialog(title=ft.Text("Erro"), content=ft.Text("Matrícula ou senha incorretas"), actions=[ft.TextButton("OK", on_click=lambda e: self._fechar_dialog(dlg))])
             self.page.dialog = dlg
             if dlg not in self.page.overlay:
                 self.page.overlay.append(dlg)
