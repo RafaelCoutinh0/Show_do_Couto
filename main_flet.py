@@ -583,11 +583,23 @@ def main(page: ft.Page):
 
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8080))
-    ft.app(
-        target=main,
-        view=ft.WEB_BROWSER,
-        port=port,
-        host="0.0.0.0",
-        assets_dir="."
-    )
+    # Usa a porta do Railway se existir
+    port = os.environ.get("PORT")
+
+    if port:
+        # 🌐 Modo WEB (Railway ou celular)
+        ft.app(
+            target=main,
+            view=ft.WEB_BROWSER,
+            port=int(port),
+            host="0.0.0.0",
+            assets_dir="."    # ✅ preciso para logo e audio funcionarem
+        )
+    else:
+        # 💻 Modo APP (rodando no PC local)
+        ft.app(
+            target=main,
+            view=ft.APP,      # ✅ importante para gerar APK e rodar localmente
+            assets_dir="."    # ✅ necessário para carregar logo.png
+        )
+
