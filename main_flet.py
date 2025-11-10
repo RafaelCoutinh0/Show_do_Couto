@@ -733,6 +733,11 @@ class ShowDoMilhao:
 
 
 def main(page: ft.Page):
+    # define cor de fundo já na entrada para evitar tela cinza em formulários
+    try:
+        page.bgcolor = "#002e5c"
+    except Exception:
+        pass
     def iniciar_jogo():
         page.clean()
         ShowDoMilhao(page)
@@ -757,7 +762,8 @@ def main(page: ft.Page):
 
         def registrar(self, e):
             self.page.clean()
-            return ft.Container(content=col, alignment=ft.alignment.center, expand=True)
+            # adicionar a tela de registro corretamente
+            self.page.add(TelaRegistro(self.page, self.callback))
 
     class TelaLogin(ft.UserControl):
         def __init__(self, page, callback):
