@@ -1,5 +1,3 @@
-# main_flet.py
-# Versão preparada para deploy em Railway (Flet 0.23.2) e áudio local (musics/).
 import os
 import random
 import traceback
@@ -236,6 +234,8 @@ class ShowDoMilhao:
         self.ajuda_professor_usada = False
         self.labels_regua = []
         self.botoes = []
+        # Lista para armazenar as perguntas que o jogador já acertou
+        self.perguntas_acertadas = []
         self.tela_inicial()
 
     # helpers para compatibilidade de ButtonStyle entre versões
@@ -428,6 +428,14 @@ class ShowDoMilhao:
             width=160,
             on_click=self.ajuda_professor
         )
+        # Botão para ver as perguntas já acertadas e a ajuda do professor
+        self.botao_acertos = ft.ElevatedButton(
+            "Minhas Respostas",
+            bgcolor=(colors.BROWN if colors is not None else None),
+            color=(colors.WHITE if colors is not None else None),
+            width=160,
+            on_click=self.mostrar_acertos
+        )
         # Sair deve apenas deslogar: chamar on_logout para voltar ao login/registro
         def _sair_jogo(e):
             try:
@@ -448,7 +456,8 @@ class ShowDoMilhao:
                 ft.Column([
                     self.label_pergunta,
                     *self.botoes,
-                    ft.Row([self.botao_ajuda, self.botao_troca, self.botao_professor]),
+                    # incluir o botão de acertos ao lado das ajudas
+                    ft.Row([self.botao_ajuda, self.botao_troca, self.botao_professor, self.botao_acertos]),
                     self.label_feedback,
                     self.label_saldo,
                     ft.Row([self.botao_desistir, self.botao_sair]),
@@ -457,6 +466,50 @@ class ShowDoMilhao:
             ], alignment=ft.MainAxisAlignment.CENTER)
         )
         self.carregar_pergunta()
+
+    def mostrar_acertos(self, e=None):
+        """Mostra uma tela com as perguntas já acertadas e o conteúdo da ajuda do professor."""
+        try:
+            self.page.clean()
+        except Exception:
+            pass
+        controls = []
+        if not self.perguntas_acertadas:
+            controls.append(ft.Text("Nenhuma pergunta acertada ainda.", size=18, color=(colors.WHITE if colors is not None else None)))
+        else:
+            for idx, item in enumerate(self.perguntas_acertadas, start=1):
+                texto_pergunta = item.get("pergunta", "Pergunta sem texto")
+                texto_ajuda = item.get("ajuda", "Sem ajuda disponível.")
+                texto_correta = item.get("correta_texto", "")
+                bloco = ft.Container(
+                    content=ft.Column([
+                        ft.Text(f"{idx}. {texto_pergunta}", size=16, weight=ft.FontWeight.BOLD, selectable=True),
+                        ft.Text(f"Resposta correta: {texto_correta}", size=14, color=(colors.CYAN if colors is not None else None)),
+                        ft.Text(f"Ajuda dos Professores: {texto_ajuda}", size=14, selectable=True)
+                    ], spacing=6),
+                    padding=ft.padding.all(10),
+                    margin=ft.margin.only(bottom=8),
+                    bgcolor=(colors.BLUE_950 if colors is not None else None)
+                )
+                controls.append(bloco)
+
+        botao_voltar = ft.ElevatedButton("Voltar ao jogo", on_click=lambda _: self.tela_jogo(), width=200)
+        self.page.add(
+            ft.Container(
+                content=ft.Column(
+                    [ft.Text("Minhas Respostas", size=22, weight=ft.FontWeight.BOLD), *controls, botao_voltar],
+                    alignment=ft.MainAxisAlignment.START,
+                    spacing=12
+                ),
+                padding=ft.padding.all(20),
+                expand=True,
+                alignment=ft.alignment.center
+            )
+        )
+        try:
+            self.page.update()
+        except Exception:
+            pass
 
     # helpers de texto para dividir questão/ajuda
     def dividir_pergunta(self, texto, limite=90):
@@ -520,7 +573,8 @@ class ShowDoMilhao:
                     ft.Column([
                         self.label_pergunta,
                         *self.botoes,
-                        ft.Row([self.botao_ajuda, self.botao_troca, self.botao_professor]),
+                        # incluir o botão de acertos ao lado das ajudas
+                        ft.Row([self.botao_ajuda, self.botao_troca, self.botao_professor, self.botao_acertos]),
                         self.label_feedback,
                         self.label_saldo,
                         ft.Row([self.botao_desistir, self.botao_sair]),
@@ -623,6 +677,18 @@ class ShowDoMilhao:
         if escolha == correta:
             try:
                 self.musica.tocar(2)
+            except Exception:
+                pass
+            # registrar pergunta acertada (guarda texto da pergunta, ajuda e texto da resposta correta)
+            try:
+                correta_texto = ""
+                if isinstance(self.pergunta_atual.get("alternativas"), list) and isinstance(self.pergunta_atual.get("correta"), int):
+                    correta_texto = self.pergunta_atual["alternativas"][self.pergunta_atual["correta"]]
+                self.perguntas_acertadas.append({
+                    "pergunta": self.pergunta_atual.get("pergunta", ""),
+                    "ajuda": self.pergunta_atual.get("ajuda", ""),
+                    "correta_texto": correta_texto
+                })
             except Exception:
                 pass
             self.pontos += 1000
@@ -868,7 +934,8 @@ class TelaEntrada(ft.UserControl):
     def entrar_sem_conta(self, e):
         try:
             # inicia o jogo diretamente como "convidado"
-            ShowDoMilhao(self.page, on_logout=lambda: show_control(self.page, lambda: TelaEntrada(self.page, self.callback)))
+            # Ao sair, NÃO preservar callback original: voltar para TelaEntrada(callback=None)
+            ShowDoMilhao(self.page, on_logout=lambda: show_control(self.page, lambda: TelaEntrada(self.page, None)))
             return
         except Exception as ex:
             try:
@@ -921,7 +988,8 @@ class TelaLogin(ft.UserControl):
         if ok:
             try:
                 # Se resp for dict com dados do usuário, poderia-se armazenar se necessário
-                ShowDoMilhao(self.page, on_logout=lambda: show_control(self.page, lambda: TelaEntrada(self.page, self.callback)))
+                # Ao sair, sempre voltar para TelaEntrada sem callback (logout real)
+                ShowDoMilhao(self.page, on_logout=lambda: show_control(self.page, lambda: TelaEntrada(self.page, None)))
                 return
             except Exception as ex:
                 _show_error_dialog(self.page, "Erro ao iniciar jogo", str(ex))
