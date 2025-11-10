@@ -155,164 +155,9 @@ class MusicaPlayer:
             # não deixar quebrar a aplicação por erro de áudio
             print("Erro ao tocar áudio:", traceback.format_exc())
 
-class TelaRegistro(ft.UserControl):
-    def __init__(self, page, callback):
-        super().__init__()
-        self.page = page
-        self.callback = callback
-        self.nome = ft.TextField(label="Nome", width=300)
-        self.matricula = ft.TextField(label="Matrícula", width=300)
-        self.email = ft.TextField(label="Email", width=300)
-        self.senha = ft.TextField(label="Senha", password=True, can_reveal_password=True, width=300)
+# Removido: antiga definição de TelaRegistro que herdava ft.Column (substituída por UserControl mais acima)
 
-    def build(self):
-        col = ft.Column([
-            ft.Text("Registro", size=30, weight=ft.FontWeight.BOLD),
-            self.nome,
-            self.matricula,
-            self.email,
-            self.senha,
-            ft.ElevatedButton("Registrar", on_click=self.on_registrar, width=300),
-            ft.TextButton("Já tenho conta", on_click=self.on_go_login)
-        ], alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=12)
-        return ft.Container(content=col, alignment=ft.alignment.center, expand=True, padding=ft.padding.all(20))
-
-    def on_go_login(self, e=None):
-        try:
-            self.page.clean()
-        except Exception:
-            pass
-        self.page.add(TelaLogin(self.page, self.callback))
-
-    def on_registrar(self, e=None):
-        # run in background to avoid freezing UI
-        try:
-            self.page.run_task(self._do_registrar)
-        except Exception:
-            # fallback synchronous (may freeze)
-            ok, resp = registrar_usuario(self.nome.value, self.matricula.value, self.email.value, self.senha.value)
-            if ok:
-                try:
-                    self.page.snack_bar = ft.SnackBar(ft.Text("✅ Registrado com sucesso"))
-                    self.page.snack_bar.open = True
-                except Exception:
-                    pass
-                try:
-                    self.page.clean()
-                except Exception:
-                    pass
-                try:
-                    self.callback()
-                except Exception:
-                    pass
-            else:
-                try:
-                    self.page.snack_bar = ft.SnackBar(ft.Text(f"❌ Erro ao registrar: {str(resp)[:200]}"))
-                    self.page.snack_bar.open = True
-                except Exception:
-                    pass
-            try:
-                self.page.update()
-            except Exception:
-                pass
-
-    async def _do_registrar(self):
-        import asyncio
-        ok, resp = await asyncio.to_thread(registrar_usuario, self.nome.value, self.matricula.value, self.email.value, self.senha.value)
-        try:
-            if ok:
-                self.page.snack_bar = ft.SnackBar(ft.Text("✅ Registrado com sucesso"))
-                self.page.snack_bar.open = True
-                try:
-                    self.page.clean()
-                except Exception:
-                    pass
-                try:
-                    self.callback()
-                except Exception:
-                    pass
-            else:
-                self.page.snack_bar = ft.SnackBar(ft.Text(f"❌ Erro ao registrar: {str(resp)[:200]}"))
-                self.page.snack_bar.open = True
-            try:
-                self.page.update()
-            except Exception:
-                pass
-        except Exception as e:
-            print('Erro _do_registrar:', e)
-
-
-class TelaLogin(ft.UserControl):
-    def __init__(self, page, callback):
-        super().__init__()
-        self.page = page
-        self.callback = callback
-        self.matricula = ft.TextField(label="Matrícula", width=300)
-        self.senha = ft.TextField(label="Senha", password=True, can_reveal_password=True, width=300)
-
-    def build(self):
-        col = ft.Column([
-            ft.Text("Login", size=30, weight=ft.FontWeight.BOLD),
-            self.matricula,
-            self.senha,
-            ft.ElevatedButton("Entrar", on_click=self.on_login, width=300),
-            ft.TextButton("Criar nova conta", on_click=self.on_go_registro)
-        ], alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=12)
-        return ft.Container(content=col, alignment=ft.alignment.center, expand=True, padding=ft.padding.all(20))
-
-    def on_go_registro(self, e=None):
-        try:
-            self.page.clean()
-        except Exception:
-            pass
-        self.page.add(TelaRegistro(self.page, self.callback))
-
-    def on_login(self, e=None):
-        try:
-            self.page.run_task(self._do_login)
-        except Exception:
-            ok, resp = login_usuario(self.matricula.value, self.senha.value)
-            if ok:
-                try:
-                    self.page.snack_bar = ft.SnackBar(ft.Text("✅ Login OK"))
-                    self.page.snack_bar.open = True
-                except Exception:
-                    pass
-                try:
-                    self.callback()
-                except Exception:
-                    pass
-            else:
-                try:
-                    self.page.snack_bar = ft.SnackBar(ft.Text(f"❌ Matrícula ou senha incorretas: {str(resp)[:200]}"))
-                    self.page.snack_bar.open = True
-                except Exception:
-                    pass
-            try:
-                self.page.update()
-            except Exception:
-                pass
-
-    async def _do_login(self):
-        import asyncio
-        ok, resp = await asyncio.to_thread(login_usuario, self.matricula.value, self.senha.value)
-        try:
-            if ok:
-                self.page.snack_bar = ft.SnackBar(ft.Text("✅ Login OK"))
-                self.page.snack_bar.open = True
-                try:
-                    self.callback()
-                except Exception:
-                    pass
-            else:
-                self.page.snack_bar = ft.SnackBar(ft.Text(f"❌ Matrícula ou senha incorretas: {str(resp)[:200]}"))
-                self.page.snack_bar.open = True
-            try:
-                self.page.update()
-            except Exception:
-                pass
-        except Exception as e:
-            print('Erro _do_login:', e)
+# Removido: antiga definição de TelaLogin que herdava ft.Column (substituída por UserControl mais acima)
 
 class ShowDoMilhao:
     def __init__(self, page: ft.Page, on_logout=None):
@@ -868,6 +713,39 @@ class ShowDoMilhao:
         except Exception:
             pass
 
+def show_control(page: ft.Page, control_callable):
+    """Limpa a página e adiciona um novo controle criado por control_callable().
+    control_callable deve ser uma função que retorna o controle (para evitar criar
+    controles antes da operação de limpeza em alguns ambientes).
+    """
+    try:
+        # limpar primeiro
+        try:
+            page.clean()
+        except Exception:
+            pass
+        # criar controle (callable para atrasar construção) e adicionar
+        control = control_callable()
+        page.add(control)
+        try:
+            page.update()
+        except Exception:
+            pass
+    except Exception:
+        # última tentativa: limpar e adicionar um placeholder de entrada
+        try:
+            page.clean()
+        except Exception:
+            pass
+        try:
+            page.add(TelaEntrada(page, None))
+            try:
+                page.update()
+            except Exception:
+                pass
+        except Exception:
+            pass
+
 # Mover as classes TelaEntrada e TelaLogin para fora da função main
 class TelaEntrada(ft.UserControl):
     def __init__(self, page, callback):
@@ -883,16 +761,77 @@ class TelaEntrada(ft.UserControl):
         return ft.Container(content=col, alignment=ft.alignment.center, expand=True)
 
     def entrar(self, e):
-        self.page.clean()
-        self.page.add(TelaLogin(self.page, self.callback))
+        try:
+            show_control(self.page, lambda: TelaLogin(self.page, self.callback))
+            return
+        except Exception:
+            pass
+        try:
+            self.page.clean()
+        except Exception:
+            pass
+        try:
+            self.page.add(TelaEntrada(self.page, self.callback))
+            self.page.update()
+        except Exception:
+            pass
 
     def registrar(self, e):
-        self.page.clean()
-        # adicionar a tela de registro corretamente
-        self.page.add(TelaRegistro(self.page, self.callback))
+        try:
+            show_control(self.page, lambda: TelaRegistro(self.page, self.callback))
+            return
+        except Exception:
+            import traceback as _tb
+            tb = _tb.format_exc()
+            try:
+                _show_error_dialog(self.page, "Erro ao abrir Registro", tb)
+            except Exception:
+                pass
+        try:
+            self.page.clean()
+        except Exception:
+            pass
+        try:
+            self.page.add(TelaEntrada(self.page, self.callback))
+            self.page.update()
+        except Exception:
+            pass
 
 # A definição de TelaLogin foi removida aqui (duplicata). Há uma definição válida
 # mais abaixo no arquivo que é usada pela aplicação. Mantida para evitar redeclaração.
+
+def _show_error_dialog(page: ft.Page, title: str, message: str):
+    try:
+        dlg = ft.AlertDialog(
+            title=ft.Text(title),
+            content=ft.Text(str(message)[:1000]),
+            actions=[ft.TextButton("OK", on_click=lambda e: _close_dialog(page, dlg))]
+        )
+        page.dialog = dlg
+        if dlg not in page.overlay:
+            page.overlay.append(dlg)
+        dlg.open = True
+        try:
+            page.update()
+        except Exception:
+            pass
+    except Exception:
+        pass
+
+
+def _close_dialog(page, dlg):
+    try:
+        dlg.open = False
+        page.dialog = None
+        if dlg in page.overlay:
+            page.overlay.remove(dlg)
+        try:
+            page.update()
+        except Exception:
+            pass
+    except Exception:
+        pass
+
 
 def main(page: ft.Page):
     # define cor de fundo já na entrada para evitar tela cinza em formulários
@@ -901,7 +840,10 @@ def main(page: ft.Page):
     except Exception:
         pass
     def iniciar_jogo():
-        page.clean()
+        try:
+            page.clean()
+        except Exception:
+            pass
         # função para retornar à tela de entrada (login/registro)
         def show_entry():
             try:
@@ -910,9 +852,8 @@ def main(page: ft.Page):
                 pass
             page.add(TelaEntrada(page, iniciar_jogo))
 
-        ShowDoMilhao(page, on_logout=show_entry)
-
-    page.add(TelaEntrada(page, iniciar_jogo))
+        try:
+            # envolver toda inicialização do jogo em try/except para capturar erros
 
 
 if __name__ == "__main__":
