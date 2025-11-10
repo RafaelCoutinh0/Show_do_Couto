@@ -13,44 +13,53 @@ import hashlib
 WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbwIVi_uiA-MFKIpwsjH9oQuLnmjxt2WOJKan5KbTYiuLCjjkkVlqbaVCga3TywM2mw_8A/exec"
 
 def hash_senha(senha: str) -> str:
-    # garante que senha None seja tratada como string vazia para evitar AttributeError
+    # NÃO usar criptografia: retornar a senha em texto puro conforme solicitado
+    # mantém tratamento de None e trim
     s = (senha or "").strip()
-    return hashlib.sha256(s.encode("utf-8")).hexdigest()
+    return s
 
 def registrar_usuario(nome, matricula, email, senha):
+    """Envia registro ao webhook. Retorna (sucesso:bool, resposta:str)."""
     payload = {
         "action": "register",
-        "nome": nome.strip(),
-        "matricula": matricula.strip(),
-        "email": email.strip(),
-        # envia o hash puro (sem apóstrofo) — manter compatibilidade com o doPost atual
+        "nome": (nome or "").strip(),
+        "matricula": (matricula or "").strip(),
+        "email": (email or "").strip(),
         "senha": hash_senha(senha)
     }
     try:
         print("DEBUG payload register:", payload)
         headers = {"Content-Type": "application/json"}
         r = requests.post(WEBHOOK_URL, data=json.dumps(payload), headers=headers, timeout=10)
-        print("DEBUG registro:", r.text)
-        return "REGISTER_OK" in r.text
+        print("DEBUG registro (status):", r.status_code, "body:", r.text)
+        if r.status_code == 200:
+            # aceitar 200 como sucesso mesmo se o corpo não contiver REGISTER_OK
+            return (True, r.text)
+        else:
+            return (False, f"HTTP {r.status_code}: {r.text}")
     except Exception as e:
         print("ERRO REGISTRO:", e)
-        return False
+        return (False, str(e))
 
 def login_usuario(matricula, senha):
+    """Tenta login no webhook. Retorna (sucesso:bool, resposta:str)."""
     payload = {
         "action": "login",
-        "matricula": matricula.strip(),
+        "matricula": (matricula or "").strip(),
         "senha": hash_senha(senha)
     }
     try:
         headers = {"Content-Type": "application/json"}
         r = requests.post(WEBHOOK_URL, data=json.dumps(payload), headers=headers, timeout=10)
         print("DEBUG payload login:", payload)
-        print("DEBUG login:", r.text)
-        return "LOGIN_OK" in r.text
+        print("DEBUG login (status):", r.status_code, "body:", r.text)
+        if r.status_code == 200:
+            return (True, r.text)
+        else:
+            return (False, f"HTTP {r.status_code}: {r.text}")
     except Exception as e:
         print("ERRO LOGIN:", e)
-        return False
+        return (False, str(e))
 
 # Compatibilidade com cores entre versões:
 try:
@@ -173,7 +182,7 @@ class TelaRegistro(ft.UserControl):
         matricula = (self.matricula.value or "").strip()
         email = (self.email.value or "").strip()
         senha = (self.senha.value or "").strip()
-        ok = registrar_usuario(nome, matricula, email, senha)
+        ok, resposta = registrar_usuario(nome, matricula, email, senha)
         if ok:
             try:
                 self.page.snack_bar = ft.SnackBar(ft.Text("✅ Registrado com sucesso"))
@@ -189,9 +198,35 @@ class TelaRegistro(ft.UserControl):
                 self.go_jogo()
             except Exception:
                 pass
-        else:
-            self.page.snack_bar = ft.SnackBar(ft.Text("❌ Erro ao registrar"))
-            self.page.snack_bar.open = True
+            try:
+                self.page.update()
+            except Exception:
+                pass
+            return
+
+        # falha: mostrar diálogo com resposta detalhada para debugging
+        try:
+            dlg = ft.AlertDialog(
+                title=ft.Text("Erro ao Registrar"),
+                content=ft.Text(str(resposta)[:1000]),
+                actions=[ft.TextButton("OK", on_click=lambda e: self._fechar_dialog(dlg))]
+            )
+            self.page.dialog = dlg
+            if dlg not in self.page.overlay:
+                self.page.overlay.append(dlg)
+            dlg.open = True
+            try:
+                self.page.update()
+            except Exception:
+                pass
+        except Exception:
+            # fallback: snack com a mensagem curta
+            try:
+                self.page.snack_bar = ft.SnackBar(ft.Text(f"❌ Erro ao registrar: {str(resposta)[:120]}"))
+                self.page.snack_bar.open = True
+                self.page.update()
+            except Exception:
+                pass
         self.page.update()
 
     def ir_para_login(self):
@@ -224,13 +259,13 @@ class TelaLogin(ft.UserControl):
         )
 
     def on_login(self, e):
-        ok = login_usuario(self.matricula.value, self.senha.value)
+        ok, resposta = login_usuario(self.matricula.value, self.senha.value)
         if ok:
             self.page.snack_bar = ft.SnackBar(ft.Text("✅ Login OK"))
             self.page.snack_bar.open = True
             self.go_jogo()
         else:
-            self.page.snack_bar = ft.SnackBar(ft.Text("❌ Matrícula ou senha incorretas"))
+            self.page.snack_bar = ft.SnackBar(ft.Text(f"❌ Matrícula ou senha incorretas: {resposta}"))
             self.page.snack_bar.open = True
         self.page.update()
 
