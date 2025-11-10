@@ -8,27 +8,14 @@ import requests
 import json
 import base64
 from pathlib import Path
+import requests
+import hashlib
 
 WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbwIVi_uiA-MFKIpwsjH9oQuLnmjxt2WOJKan5KbTYiuLCjjkkVlqbaVCga3TywM2mw_8A/exec"
 
-# --- simples armazenamento local de usuários ---
-USERS_DB = "users.json"
+def hash_senha(senha: str) -> str:
+    return hashlib.sha256(senha.strip().encode("utf-8")).hexdigest()
 
-def load_users():
-    try:
-        if os.path.exists(USERS_DB):
-            with open(USERS_DB, "r", encoding="utf-8") as f:
-                return json.load(f)
-    except Exception:
-        pass
-    return {}
-
-def save_users(users):
-    try:
-        with open(USERS_DB, "w", encoding="utf-8") as f:
-            json.dump(users, f, ensure_ascii=False, indent=2)
-    except Exception:
-        pass
 
 def register_local(nome, matricula, email, senha):
     users = load_users()
@@ -47,21 +34,22 @@ def authenticate(matricula, senha):
         return False, "Senha incorreta"
     return True, u
 
-def registrar_usuario(nome, matricula, email):
-    # Mantido por retrocompatibilidade: se chamada sem senha, envia sem campo 'senha'
+def registrar_usuario(nome, matricula, email, senha):
+    payload = {
+        "action": "register",
+        "nome": nome.strip(),
+        "matricula": matricula.strip(),
+        "email": email.strip(),
+        "senha": hash_senha(senha)
+    }
     try:
-        data = {
-            "action": "register",
-            "nome": nome,
-            "matricula": matricula,
-            "email": email,
-            # 'senha' ausente
-        }
-        headers = {"Content-Type": "application/json"}
-        resp = requests.post(WEBHOOK_URL, json=data, headers=headers, timeout=10)
-        print("✅ Registro enviado (sem senha):", resp.status_code, resp.text)
+        r = requests.post(WEBHOOK_URL, json=payload, timeout=10)
+        print("DEBUG registro:", r.text)
+        return "REGISTER_OK" in r.text
     except Exception as e:
-        print("❌ Erro ao enviar o registro:", e)
+        print("ERRO REGISTRO:", e)
+        return False
+
 
 def registrar_usuario_com_senha(nome, matricula, email, senha):
     try:
@@ -79,6 +67,20 @@ def registrar_usuario_com_senha(nome, matricula, email, senha):
     except Exception as e:
         print("❌ Erro ao enviar o registro com senha:", e)
         return None
+
+def login_usuario(matricula, senha):
+    payload = {
+        "action": "login",
+        "matricula": matricula.strip(),
+        "senha": hash_senha(senha)
+    }
+    try:
+        r = requests.post(WEBHOOK_URL, json=payload, timeout=10)
+        print("DEBUG login:", r.text)
+        return "LOGIN_OK" in r.text
+    except Exception as e:
+        print("ERRO LOGIN:", e)
+        return False
 
 # Compatibilidade com cores entre versões:
 try:
@@ -161,11 +163,30 @@ class MusicaPlayer:
             # não deixar quebrar a aplicação por erro de áudio
             print("Erro ao tocar áudio:", traceback.format_exc())
 
-class TelaRegistro(ft.UserControl):
-    def __init__(self, page, callback):
+class TelaInicial(ft.UserControl):
+    def __init__(self, page, go_login, go_registro):
         super().__init__()
         self.page = page
-        self.callback = callback
+        self.go_login = go_login
+        self.go_registro = go_registro
+
+    def build(self):
+        return ft.Column(
+            [
+                ft.Text("Show do Couto", size=38, weight=ft.FontWeight.BOLD),
+                ft.ElevatedButton("Entrar", on_click=lambda e: self.go_login()),
+                ft.TextButton("Registrar", on_click=lambda e: self.go_registro())
+            ],
+            alignment="center",
+            horizontal_alignment="center"
+        )
+
+class TelaRegistro(ft.UserControl):
+    def __init__(self, page, go_login, go_jogo):
+        super().__init__()
+        self.page = page
+        self.go_login = go_login
+        self.go_jogo = go_jogo
 
         self.nome = ft.TextField(label="Nome", width=300)
         self.matricula = ft.TextField(label="Matrícula", width=300)
@@ -173,89 +194,69 @@ class TelaRegistro(ft.UserControl):
         self.senha = ft.TextField(label="Senha", password=True, can_reveal_password=True, width=300)
 
     def build(self):
-        # centraliza o formulário na tela
-        form = ft.Column(
+        return ft.Column(
             [
-                ft.Text("Cadastro", size=32, weight=ft.FontWeight.BOLD),
+                ft.Text("Registro", size=30, weight=ft.FontWeight.BOLD),
                 self.nome,
                 self.matricula,
                 self.email,
                 self.senha,
-                ft.ElevatedButton("Continuar", on_click=self.enviar)
+                ft.ElevatedButton("Registrar", on_click=self.on_registrar),
+                ft.TextButton("Já tenho conta", on_click=lambda e: self.go_login())
             ],
-            alignment=ft.MainAxisAlignment.CENTER,
-            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-            spacing=12
+            alignment="center",
+            horizontal_alignment="center"
         )
-        return ft.Container(content=form, alignment=ft.alignment.center, expand=True, padding=ft.padding.all(20))
 
-    def enviar(self, e):
-        nome = (self.nome.value or "").strip()
-        matricula = (self.matricula.value or "").strip()
-        email = (self.email.value or "").strip()
-        senha = (self.senha.value or "").strip()
-        if not (nome and matricula and email and senha):
-            dlg = ft.AlertDialog(title=ft.Text("Erro"), content=ft.Text("Preencha todos os campos."), actions=[ft.TextButton("OK", on_click=lambda e: self._fechar_dialog(dlg))])
-            self.page.dialog = dlg
-            if dlg not in self.page.overlay:
-                self.page.overlay.append(dlg)
-            dlg.open = True
-            try:
-                self.page.update()
-            except Exception:
-                pass
-            return
-
-        ok, msg = register_local(nome, matricula, email, senha)
+    def on_registrar(self, e):
+        ok = registrar_usuario(
+            self.nome.value,
+            self.matricula.value,
+            self.email.value,
+            self.senha.value
+        )
         if ok:
-            try:
-                # enviar também a senha para o Sheets e verificar resposta
-                resp = registrar_usuario_com_senha(nome, matricula, email, senha)
-            except Exception as ex:
-                resp = None
-                print("Erro ao chamar registrar_usuario_com_senha:", ex)
-
-            # avalia resposta do webhook
-            sucesso_remoto = False
-            detalhe = ""
-            if resp is None:
-                detalhe = "Sem resposta do servidor (exceção)."
-            else:
-                try:
-                    status = int(getattr(resp, 'status_code', 0) or 0)
-                    corpo = (getattr(resp, 'text', '') or '').strip()
-                    detalhe = f"status={status} body={corpo[:200]}"
-                    if status == 200 and ("REGISTER_OK" in corpo or "REGISTER_OK" in corpo.upper() or "OK" in corpo):
-                        sucesso_remoto = True
-                except Exception:
-                    detalhe = f"Resposta inesperada: {resp}"
-
-            if not sucesso_remoto:
-                # mostra diálogo de erro e não entra no jogo
-                dlg = ft.AlertDialog(title=ft.Text("Erro no registro"), content=ft.Text(f"Não foi possível registrar no servidor. {detalhe}"), actions=[ft.TextButton("OK", on_click=lambda e: self._fechar_dialog(dlg))])
-                self.page.dialog = dlg
-                if dlg not in self.page.overlay:
-                    self.page.overlay.append(dlg)
-                dlg.open = True
-                try:
-                    self.page.update()
-                except Exception:
-                    pass
-                return
-
-            # sucesso local e remoto: inicia o jogo
-            self.callback()
+            self.page.snack_bar = ft.SnackBar(ft.Text("✅ Registrado com sucesso"))
+            self.page.snack_bar.open = True
+            self.go_jogo()
         else:
-             dlg = ft.AlertDialog(title=ft.Text("Erro"), content=ft.Text(msg), actions=[ft.TextButton("OK", on_click=lambda e: self._fechar_dialog(dlg))])
-             self.page.dialog = dlg
-             if dlg not in self.page.overlay:
-                 self.page.overlay.append(dlg)
-             dlg.open = True
-             try:
-                 self.page.update()
-             except Exception:
-                 pass
-             return
+            self.page.snack_bar = ft.SnackBar(ft.Text("❌ Erro ao registrar"))
+            self.page.snack_bar.open = True
+        self.page.update()
+class TelaLogin(ft.UserControl):
+    def __init__(self, page, go_registro, go_jogo):
+        super().__init__()
+        self.page = page
+        self.go_registro = go_registro
+        self.go_jogo = go_jogo
+
+        self.matricula = ft.TextField(label="Matrícula", width=300)
+        self.senha = ft.TextField(label="Senha", width=300, password=True, can_reveal_password=True)
+
+    def build(self):
+        return ft.Column(
+            [
+                ft.Text("Login", size=30, weight=ft.FontWeight.BOLD),
+                self.matricula,
+                self.senha,
+                ft.ElevatedButton("Entrar", on_click=self.on_login),
+                ft.TextButton("Criar nova conta", on_click=lambda e: self.go_registro())
+            ],
+            alignment="center",
+            horizontal_alignment="center"
+        )
+
+    def on_login(self, e):
+        ok = login_usuario(self.matricula.value, self.senha.value)
+        if ok:
+            self.page.snack_bar = ft.SnackBar(ft.Text("✅ Login OK"))
+            self.page.snack_bar.open = True
+            self.go_jogo()
+        else:
+            self.page.snack_bar = ft.SnackBar(ft.Text("❌ Matrícula ou senha incorretas"))
+            self.page.snack_bar.open = True
+        self.page.update()
+
 
 class ShowDoMilhao:
     def __init__(self, page: ft.Page, on_logout=None):
@@ -484,6 +485,7 @@ class ShowDoMilhao:
             self.page.add(TelaEntrada(self.page, None))
 
         self.botao_sair = ft.ElevatedButton("Sair", bgcolor=(colors.RED if colors is not None else None), color=(colors.WHITE if colors is not None else None), on_click=_sair_jogo)
+        self.botao_desistir = ft.ElevatedButton("Desistir", on_click=self.desistir)
         self.page.add(
             ft.Row([
                 ft.Column([
@@ -810,6 +812,65 @@ class ShowDoMilhao:
         except Exception:
             pass
 
+# Mover as classes TelaEntrada e TelaLogin para fora da função main
+class TelaEntrada(ft.UserControl):
+    def __init__(self, page, callback):
+        super().__init__()
+        self.page = page
+        self.callback = callback
+
+    def build(self):
+        btn_entrar = ft.ElevatedButton("Entrar", width=300, on_click=self.entrar)
+        btn_registrar = ft.ElevatedButton("Registrar", width=300, on_click=self.registrar)
+        col = ft.Column([ft.Text("Bem-vindo", size=28, weight=ft.FontWeight.BOLD), btn_entrar, btn_registrar], alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=12)
+        # Container expandido para centralizar verticalmente
+        return ft.Container(content=col, alignment=ft.alignment.center, expand=True)
+
+    def entrar(self, e):
+        self.page.clean()
+        self.page.add(TelaLogin(self.page, self.callback))
+
+    def registrar(self, e):
+        self.page.clean()
+        # adicionar a tela de registro corretamente
+        self.page.add(TelaRegistro(self.page, self.callback))
+
+class TelaLogin(ft.UserControl):
+    def __init__(self, page, callback):
+        super().__init__()
+        self.page = page
+        self.callback = callback
+        self.matricula = ft.TextField(label="Matrícula", width=300)
+        self.senha = ft.TextField(label="Senha", password=True, can_reveal_password=True, width=300)
+
+    def build(self):
+        btn_login = ft.ElevatedButton("Entrar", on_click=self.entrar, width=300)
+        btn_voltar = ft.ElevatedButton("Voltar", on_click=lambda e: self._voltar(), width=300)
+        col = ft.Column([ft.Text("Login", size=24, weight=ft.FontWeight.BOLD), self.matricula, self.senha, btn_login, btn_voltar], alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=12)
+        return ft.Container(content=col, alignment=ft.alignment.center, expand=True, padding=ft.padding.all(20))
+
+    def entrar(self, e):
+        matricula = (self.matricula.value or "").strip()
+        senha = (self.senha.value or "").strip()
+        ok, resp = authenticate(matricula, senha)
+        if ok:
+            # login ok
+            self.callback()
+        else:
+            dlg = ft.AlertDialog(title=ft.Text("Erro"), content=ft.Text(resp), actions=[ft.TextButton("OK", on_click=lambda e: self._fechar_dialog(dlg))])
+            self.page.dialog = dlg
+            if dlg not in self.page.overlay:
+                self.page.overlay.append(dlg)
+            dlg.open = True
+            try:
+                self.page.update()
+            except Exception:
+                pass
+
+    def _voltar(self):
+        self.page.clean()
+        self.page.add(TelaEntrada(self.page, self.callback))
+
     def _fechar_dialog(self, dlg):
         dlg.open = False
         try:
@@ -835,65 +896,6 @@ def main(page: ft.Page):
             page.add(TelaEntrada(page, iniciar_jogo))
 
         ShowDoMilhao(page, on_logout=show_entry)
-
-    # Tela inicial: escolher entrar ou registrar
-    class TelaEntrada(ft.UserControl):
-        def __init__(self, page, callback):
-            super().__init__()
-            self.page = page
-            self.callback = callback
-
-        def build(self):
-            btn_entrar = ft.ElevatedButton("Entrar", width=300, on_click=self.entrar)
-            btn_registrar = ft.ElevatedButton("Registrar", width=300, on_click=self.registrar)
-            col = ft.Column([ft.Text("Bem-vindo", size=28, weight=ft.FontWeight.BOLD), btn_entrar, btn_registrar], alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=12)
-            # Container expandido para centralizar verticalmente
-            return ft.Container(content=col, alignment=ft.alignment.center, expand=True)
-
-        def entrar(self, e):
-            self.page.clean()
-            self.page.add(TelaLogin(self.page, self.callback))
-
-        def registrar(self, e):
-            self.page.clean()
-            # adicionar a tela de registro corretamente
-            self.page.add(TelaRegistro(self.page, self.callback))
-
-    class TelaLogin(ft.UserControl):
-        def __init__(self, page, callback):
-            super().__init__()
-            self.page = page
-            self.callback = callback
-            self.matricula = ft.TextField(label="Matrícula", width=300)
-            self.senha = ft.TextField(label="Senha", password=True, can_reveal_password=True, width=300)
-
-        def build(self):
-            btn_login = ft.ElevatedButton("Entrar", on_click=self.entrar, width=300)
-            btn_voltar = ft.ElevatedButton("Voltar", on_click=lambda e: self._voltar(), width=300)
-            col = ft.Column([ft.Text("Login", size=24, weight=ft.FontWeight.BOLD), self.matricula, self.senha, btn_login, btn_voltar], alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=12)
-            return ft.Container(content=col, alignment=ft.alignment.center, expand=True, padding=ft.padding.all(20))
-
-        def entrar(self, e):
-            matricula = (self.matricula.value or "").strip()
-            senha = (self.senha.value or "").strip()
-            ok, resp = authenticate(matricula, senha)
-            if ok:
-                # login ok
-                self.callback()
-            else:
-                dlg = ft.AlertDialog(title=ft.Text("Erro"), content=ft.Text(resp), actions=[ft.TextButton("OK", on_click=lambda e: self._fechar_dialog(dlg))])
-                self.page.dialog = dlg
-                if dlg not in self.page.overlay:
-                    self.page.overlay.append(dlg)
-                dlg.open = True
-                try:
-                    self.page.update()
-                except Exception:
-                    pass
-
-        def _voltar(self):
-            self.page.clean()
-            self.page.add(TelaEntrada(self.page, self.callback))
 
     page.add(TelaEntrada(page, iniciar_jogo))
 
