@@ -152,7 +152,8 @@ class TelaRegistro(ft.UserControl):
         self.senha = ft.TextField(label="Senha", password=True, can_reveal_password=True, width=300)
 
     def build(self):
-        return ft.Column(
+        # centraliza o formulário na tela
+        form = ft.Column(
             [
                 ft.Text("Cadastro", size=32, weight=ft.FontWeight.BOLD),
                 self.nome,
@@ -161,9 +162,11 @@ class TelaRegistro(ft.UserControl):
                 self.senha,
                 ft.ElevatedButton("Continuar", on_click=self.enviar)
             ],
-            alignment="center",
-            horizontal_alignment="center"
+            alignment=ft.MainAxisAlignment.CENTER,
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            spacing=12
         )
+        return ft.Container(content=form, alignment=ft.alignment.center, expand=True, padding=ft.padding.all(20))
 
     def enviar(self, e):
         nome = (self.nome.value or "").strip()
@@ -265,7 +268,8 @@ class ShowDoMilhao:
             # fallback: caminho direto (requer assets_dir configurado)
             return ASSET_LOGO
 
-        logo = ft.Image(src=_get_logo_src(), width=600, height=300, fit=ft.ImageFit.CONTAIN)
+        # aumentar tamanho do logo
+        logo = ft.Image(src=_get_logo_src(), width=900, height=450, fit=ft.ImageFit.CONTAIN)
         botao_style = self._make_button_style()
         botao_jogar = ft.ElevatedButton(
             "Jogar",
@@ -746,7 +750,8 @@ def main(page: ft.Page):
         def build(self):
             btn_login = ft.ElevatedButton("Entrar", on_click=self.entrar, width=300)
             btn_voltar = ft.ElevatedButton("Voltar", on_click=lambda e: self._voltar(), width=300)
-            return ft.Column([ft.Text("Login", size=24, weight=ft.FontWeight.BOLD), self.matricula, self.senha, btn_login, btn_voltar], alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER)
+            col = ft.Column([ft.Text("Login", size=24, weight=ft.FontWeight.BOLD), self.matricula, self.senha, btn_login, btn_voltar], alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=12)
+            return ft.Container(content=col, alignment=ft.alignment.center, expand=True, padding=ft.padding.all(20))
 
         def entrar(self, e):
             matricula = (self.matricula.value or "").strip()
