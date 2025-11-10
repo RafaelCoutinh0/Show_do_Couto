@@ -289,12 +289,12 @@ class ShowDoMilhao:
             height=70,
             style=botao_style
         )
-        self.page.add(
-            ft.Column([
-                logo,
-                ft.Row([botao_jogar, botao_sair], alignment=ft.MainAxisAlignment.CENTER)
-            ], alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER)
-        )
+        col = ft.Column([
+            logo,
+            ft.Row([botao_jogar, botao_sair], alignment=ft.MainAxisAlignment.CENTER)
+        ], alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=24)
+        # envolver em Container expandido para centralizar também verticalmente
+        self.page.add(ft.Container(content=col, alignment=ft.alignment.center, expand=True))
 
     def iniciar_jogo(self, e=None):
         try:
@@ -729,7 +729,9 @@ def main(page: ft.Page):
         def build(self):
             btn_entrar = ft.ElevatedButton("Entrar", width=300, on_click=self.entrar)
             btn_registrar = ft.ElevatedButton("Registrar", width=300, on_click=self.registrar)
-            return ft.Column([ft.Text("Bem-vindo", size=28, weight=ft.FontWeight.BOLD), btn_entrar, btn_registrar], alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER)
+            col = ft.Column([ft.Text("Bem-vindo", size=28, weight=ft.FontWeight.BOLD), btn_entrar, btn_registrar], alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=12)
+            # Container expandido para centralizar verticalmente
+            return ft.Container(content=col, alignment=ft.alignment.center, expand=True)
 
         def entrar(self, e):
             self.page.clean()
