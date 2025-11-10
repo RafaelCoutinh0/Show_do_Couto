@@ -4,7 +4,7 @@ facil = [
         "alternativas": [
             "As variáveis do sistema permanecem sempre constantes.",
             "O modelo é representado por equações algébricas simples.",
-            "As variáveis do sistema mudam e evoluem com o passar \n do tempo.",
+            "As variáveis do sistema podem mudar e evoluir com o passar \n do tempo.",
             "O modelo só pode ser resolvido por métodos analíticos."
         ],
         "correta": 2,
@@ -121,9 +121,9 @@ facil = [
         "ajuda": "A modelagem permite entender e prever como o sistema reage a diferentes condições."
     },
     {
-        "pergunta": "Segundo os slides, os modelos podem ser de natureza:",
+        "pergunta": "Os modelos podem ser de natureza:",
         "alternativas": [
-            "Somente física e matemática.",
+            "Física e matemática.",
             "Física, matemática, gráfica e mapas.",
             "Apenas teórica.",
             "Apenas empírica."
@@ -132,7 +132,7 @@ facil = [
         "ajuda": "Os modelos podem representar sistemas por meio físico, matemático ou visual (mapas, diagramas)."
     },
     {
-        "pergunta": "Na modelagem teórica, as equações são baseadas em quais leis fundamentais?",
+        "pergunta": "Na modelagem teórica, as equações podem ser baseadas em quais leis fundamentais?",
         "alternativas": [
             "Leis de Newton e Kirchhoff, conservação e relações constitutivas.",
             "Somente nas leis de Ohm e Hooke.",
@@ -141,17 +141,6 @@ facil = [
         ],
         "correta": 0,
         "ajuda": "A abordagem teórica usa leis físicas fundamentais para descrever o sistema matematicamente."
-    },
-    {
-        "pergunta": "Um modelo estático é aquele em que:",
-        "alternativas": [
-            "As variáveis não dependem do tempo.",
-            "As variáveis variam com o tempo.",
-            "Existe histerese no sistema.",
-            "Há amortecimento em todas as respostas."
-        ],
-        "correta": 0,
-        "ajuda": "Modelos estáticos representam sistemas em equilíbrio, sem variação temporal."
     },
     {
         "pergunta": "O que caracteriza um modelo dinâmico?",
@@ -231,17 +220,6 @@ facil = [
         "ajuda": "O indutor armazena energia em um campo magnético proporcional à corrente."
     },
     {
-        "pergunta": "Em um circuito RLC série, o termo que multiplica d²q/dt² representa:",
-        "alternativas": [
-            "A capacitância.",
-            "A indutância.",
-            "A resistência.",
-            "A fonte de tensão."
-        ],
-        "correta": 1,
-        "ajuda": "No circuito RLC, L·d²q/dt² representa o comportamento inercial da corrente."
-    },
-    {
         "pergunta": "A Segunda Lei de Newton afirma que:",
         "alternativas": [
             "A força é inversamente proporcional à aceleração.",
@@ -273,17 +251,6 @@ facil = [
         ],
         "correta": 0,
         "ajuda": "Para molas ideais, F = k·x — força elástica proporcional ao deslocamento."
-    },
-    {
-        "pergunta": "O amortecedor ideal é um elemento que:",
-        "alternativas": [
-            "Armazena energia potencial.",
-            "Dissipa energia.",
-            "Armazena energia cinética.",
-            "Amplifica vibrações."
-        ],
-        "correta": 1,
-        "ajuda": "Amortecedores ideais convertem energia mecânica em calor, reduzindo vibrações."
     },
     {
         "pergunta": "Na modelagem mecânica, a mola ideal representa qual tipo de energia?",
