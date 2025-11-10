@@ -797,9 +797,121 @@ class TelaEntrada(ft.UserControl):
         except Exception:
             pass
 
-# A definição de TelaLogin foi removida aqui (duplicata). Há uma definição válida
-# mais abaixo no arquivo que é usada pela aplicação. Mantida para evitar redeclaração.
+# Novas classes adicionadas: TelaLogin e TelaRegistro
+class TelaLogin(ft.UserControl):
+    def __init__(self, page, callback):
+        super().__init__()
+        self.page = page
+        self.callback = callback
+        self.matricula = ft.TextField(label="Matrícula", width=320)
+        self.senha = ft.TextField(label="Senha", password=True, can_reveal_password=True, width=320)
 
+    def build(self):
+        btn_ok = ft.ElevatedButton("Entrar", width=320, on_click=self.on_entrar)
+        btn_voltar = ft.TextButton("Voltar", on_click=self.on_voltar)
+        col = ft.Column(
+            [
+                ft.Text("Login", size=24, weight=ft.FontWeight.BOLD),
+                self.matricula,
+                self.senha,
+                btn_ok,
+                btn_voltar
+            ],
+            alignment=ft.MainAxisAlignment.CENTER,
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            spacing=12
+        )
+        return ft.Container(content=col, alignment=ft.alignment.center, expand=True)
+
+    def on_entrar(self, e):
+        matricula = (self.matricula.value or "").strip()
+        senha = (self.senha.value or "").strip()
+        try:
+            ok, resp = login_usuario(matricula, senha)
+        except Exception as ex:
+            _show_error_dialog(self.page, "Erro de rede", str(ex))
+            return
+        if ok:
+            # iniciar o jogo -> instanciar ShowDoMilhao que já monta a interface no page
+            try:
+                ShowDoMilhao(self.page, on_logout=lambda: show_control(self.page, lambda: TelaEntrada(self.page, self.callback)))
+                return
+            except Exception as ex:
+                _show_error_dialog(self.page, "Erro ao iniciar jogo", str(ex))
+        else:
+            _show_error_dialog(self.page, "Login falhou", str(resp))
+
+    def on_voltar(self, e):
+        try:
+            show_control(self.page, lambda: TelaEntrada(self.page, self.callback))
+        except Exception:
+            try:
+                self.page.clean()
+            except Exception:
+                pass
+            try:
+                self.page.add(TelaEntrada(self.page, self.callback))
+                self.page.update()
+            except Exception:
+                pass
+
+
+class TelaRegistro(ft.UserControl):
+    def __init__(self, page, callback):
+        super().__init__()
+        self.page = page
+        self.callback = callback
+        self.nome = ft.TextField(label="Nome", width=320)
+        self.matricula = ft.TextField(label="Matrícula", width=320)
+        self.email = ft.TextField(label="Email", width=320)
+        self.senha = ft.TextField(label="Senha", password=True, can_reveal_password=True, width=320)
+
+    def build(self):
+        btn_reg = ft.ElevatedButton("Registrar", width=320, on_click=self.on_registrar)
+        btn_voltar = ft.TextButton("Voltar", on_click=self.on_voltar)
+        col = ft.Column(
+            [
+                ft.Text("Registrar", size=24, weight=ft.FontWeight.BOLD),
+                self.nome,
+                self.matricula,
+                self.email,
+                self.senha,
+                btn_reg,
+                btn_voltar
+            ],
+            alignment=ft.MainAxisAlignment.CENTER,
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            spacing=10
+        )
+        return ft.Container(content=col, alignment=ft.alignment.center, expand=True)
+
+    def on_registrar(self, e):
+        nome = (self.nome.value or "").strip()
+        matricula = (self.matricula.value or "").strip()
+        email = (self.email.value or "").strip()
+        senha = (self.senha.value or "").strip()
+        try:
+            ok, resp = registrar_usuario(nome, matricula, email, senha)
+        except Exception as ex:
+            _show_error_dialog(self.page, "Erro de rede", str(ex))
+            return
+        if ok:
+            try:
+                _show_error_dialog(self.page, "Registro OK", "Usuário registrado com sucesso. Faça login.")
+            except Exception:
+                pass
+            try:
+                show_control(self.page, lambda: TelaLogin(self.page, self.callback))
+            except Exception:
+                pass
+        else:
+            _show_error_dialog(self.page, "Registro falhou", str(resp))
+
+    def on_voltar(self, e):
+        try:
+            show_control(self.page, lambda: TelaEntrada(self.page, self.callback))
+        except Exception:
+            pass
 def _show_error_dialog(page: ft.Page, title: str, message: str):
     try:
         dlg = ft.AlertDialog(
