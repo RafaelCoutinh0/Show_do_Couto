@@ -839,11 +839,13 @@ def main(page: ft.Page):
         page.bgcolor = "#002e5c"
     except Exception:
         pass
+
     def iniciar_jogo():
         try:
             page.clean()
         except Exception:
             pass
+
         # função para retornar à tela de entrada (login/registro)
         def show_entry():
             try:
@@ -854,6 +856,41 @@ def main(page: ft.Page):
 
         try:
             # envolver toda inicialização do jogo em try/except para capturar erros
+            # aqui simplesmente mostramos a tela de entrada (registro/login)
+            show_entry()
+            try:
+                page.update()
+            except Exception:
+                pass
+        except Exception:
+            try:
+                import traceback as _tb
+                tb = _tb.format_exc()
+            except Exception:
+                tb = "Erro desconhecido"
+            try:
+                _show_error_dialog(page, "Erro ao iniciar interface", tb)
+            except Exception:
+                pass
+
+    # inicialização padrão quando a app é aberta
+    try:
+        # mostra a tela de entrada e passa o callback iniciar_jogo
+        page.add(TelaEntrada(page, iniciar_jogo))
+        try:
+            page.update()
+        except Exception:
+            pass
+    except Exception:
+        try:
+            import traceback as _tb
+            tb = _tb.format_exc()
+        except Exception:
+            tb = "Erro desconhecido"
+        try:
+            _show_error_dialog(page, "Erro na inicialização", tb)
+        except Exception:
+            pass
 
 
 if __name__ == "__main__":
