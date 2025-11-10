@@ -588,5 +588,6 @@ if __name__ == "__main__":
         target=main,
         view=ft.WEB_BROWSER,
         port=port,
-        host="0.0.0.0"
+        host="0.0.0.0",
+        assets_dir="."
     )
