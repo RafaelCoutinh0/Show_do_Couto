@@ -108,9 +108,230 @@ facil = [
         ],
         "correta": 2,
         "ajuda": "A validação compara o modelo com dados reais para garantir precisão."
+    },
+    {
+        "pergunta": "Qual é o principal objetivo da modelagem matemática de um processo?",
+        "alternativas": [
+            "Substituir completamente o processo físico real.",
+            "Compreender e prever o comportamento do sistema.",
+            "Eliminar a necessidade de experimentos.",
+            "Gerar equações complexas para o sistema."
+        ],
+        "correta": 1,
+        "ajuda": "A modelagem permite entender e prever como o sistema reage a diferentes condições."
+    },
+    {
+        "pergunta": "Segundo os slides, os modelos podem ser de natureza:",
+        "alternativas": [
+            "Somente física e matemática.",
+            "Física, matemática, gráfica e mapas.",
+            "Apenas teórica.",
+            "Apenas empírica."
+        ],
+        "correta": 1,
+        "ajuda": "Os modelos podem representar sistemas por meio físico, matemático ou visual (mapas, diagramas)."
+    },
+    {
+        "pergunta": "Na modelagem teórica, as equações são baseadas em quais leis fundamentais?",
+        "alternativas": [
+            "Leis de Newton e Kirchhoff, conservação e relações constitutivas.",
+            "Somente nas leis de Ohm e Hooke.",
+            "Nas leis estatísticas dos dados observados.",
+            "Em princípios exclusivamente químicos."
+        ],
+        "correta": 0,
+        "ajuda": "A abordagem teórica usa leis físicas fundamentais para descrever o sistema matematicamente."
+    },
+    {
+        "pergunta": "Um modelo estático é aquele em que:",
+        "alternativas": [
+            "As variáveis não dependem do tempo.",
+            "As variáveis variam com o tempo.",
+            "Existe histerese no sistema.",
+            "Há amortecimento em todas as respostas."
+        ],
+        "correta": 0,
+        "ajuda": "Modelos estáticos representam sistemas em equilíbrio, sem variação temporal."
+    },
+    {
+        "pergunta": "O que caracteriza um modelo dinâmico?",
+        "alternativas": [
+            "O modelo é independente das entradas.",
+            "As variáveis mudam com o tempo.",
+            "Não existem equações diferenciais.",
+            "O sistema está sempre em equilíbrio."
+        ],
+        "correta": 1,
+        "ajuda": "Modelos dinâmicos descrevem a evolução das variáveis ao longo do tempo."
+    },
+    {
+        "pergunta": "A Primeira Lei de Kirchhoff trata da conservação de:",
+        "alternativas": [
+            "Energia.",
+            "Potência.",
+            "Carga elétrica.",
+            "Tensão elétrica."
+        ],
+        "correta": 2,
+        "ajuda": "A Primeira Lei de Kirchhoff afirma que a soma das correntes em um nó é igual a zero."
+    },
+    {
+        "pergunta": "De acordo com a Segunda Lei de Kirchhoff, a soma das tensões em uma malha fechada é:",
+        "alternativas": [
+            "Maior que zero.",
+            "Igual a zero.",
+            "Menor que zero.",
+            "Indeterminada."
+        ],
+        "correta": 1,
+        "ajuda": "A Segunda Lei de Kirchhoff expressa a conservação de energia elétrica na malha."
+    },
+    {
+        "pergunta": "Na relação constitutiva de um capacitor ideal, a carga é proporcional a:",
+        "alternativas": [
+            "A tensão no resistor.",
+            "A corrente na bobina.",
+            "A tensão no capacitor.",
+            "O tempo de operação."
+        ],
+        "correta": 2,
+        "ajuda": "No capacitor ideal, q = C·Vc — a carga é proporcional à tensão aplicada."
+    },
+    {
+        "pergunta": "A Lei de Ohm relaciona tensão, corrente e:",
+        "alternativas": [
+            "Indutância.",
+            "Resistência.",
+            "Capacitância.",
+            "Condutância térmica."
+        ],
+        "correta": 1,
+        "ajuda": "A relação básica é V = R·i, válida para resistores ôhmicos ideais."
+    },
+    {
+        "pergunta": "Em um circuito RC, a constante de tempo do sistema é dada por:",
+        "alternativas": [
+            "R/C",
+            "RC",
+            "1/(RC)",
+            "R + C"
+        ],
+        "correta": 1,
+        "ajuda": "A constante de tempo τ = R·C define a velocidade de carga e descarga do capacitor."
+    },
+    {
+        "pergunta": "Qual elemento elétrico é responsável por armazenar energia em forma de campo magnético?",
+        "alternativas": [
+            "Resistor.",
+            "Indutor.",
+            "Capacitor.",
+            "Diodo."
+        ],
+        "correta": 1,
+        "ajuda": "O indutor armazena energia em um campo magnético proporcional à corrente."
+    },
+    {
+        "pergunta": "Em um circuito RLC série, o termo que multiplica d²q/dt² representa:",
+        "alternativas": [
+            "A capacitância.",
+            "A indutância.",
+            "A resistência.",
+            "A fonte de tensão."
+        ],
+        "correta": 1,
+        "ajuda": "No circuito RLC, L·d²q/dt² representa o comportamento inercial da corrente."
+    },
+    {
+        "pergunta": "A Segunda Lei de Newton afirma que:",
+        "alternativas": [
+            "A força é inversamente proporcional à aceleração.",
+            "A força é igual à massa vezes a aceleração.",
+            "A força é independente da massa.",
+            "A força depende da velocidade."
+        ],
+        "correta": 1,
+        "ajuda": "F = m·a é a base da modelagem de sistemas mecânicos lineares."
+    },
+    {
+        "pergunta": "O momento linear é definido como:",
+        "alternativas": [
+            "p = F/t",
+            "p = mv",
+            "p = m/a",
+            "p = E/v"
+        ],
+        "correta": 1,
+        "ajuda": "O momento linear expressa a quantidade de movimento de um corpo em translação."
+    },
+    {
+        "pergunta": "A Lei de Hooke expressa a relação entre:",
+        "alternativas": [
+            "Força e deslocamento em uma mola.",
+            "Força e aceleração.",
+            "Velocidade e massa.",
+            "Energia e temperatura."
+        ],
+        "correta": 0,
+        "ajuda": "Para molas ideais, F = k·x — força elástica proporcional ao deslocamento."
+    },
+    {
+        "pergunta": "O amortecedor ideal é um elemento que:",
+        "alternativas": [
+            "Armazena energia potencial.",
+            "Dissipa energia.",
+            "Armazena energia cinética.",
+            "Amplifica vibrações."
+        ],
+        "correta": 1,
+        "ajuda": "Amortecedores ideais convertem energia mecânica em calor, reduzindo vibrações."
+    },
+    {
+        "pergunta": "Na modelagem mecânica, a mola ideal representa qual tipo de energia?",
+        "alternativas": [
+            "Cinética.",
+            "Elástica.",
+            "Elétrica.",
+            "Térmica."
+        ],
+        "correta": 1,
+        "ajuda": "A energia potencial elástica é armazenada no alongamento da mola."
+    },
+    {
+        "pergunta": "A unidade do coeficiente de amortecimento (c) em um sistema mecânico é:",
+        "alternativas": [
+            "N/m",
+            "N⋅s/m",
+            "kg⋅m/s²",
+            "N⋅m"
+        ],
+        "correta": 1,
+        "ajuda": "O coeficiente c relaciona força e velocidade: F = c·v, medido em N·s/m."
+    },
+    {
+        "pergunta": "O movimento oscilatório de um sistema massa–mola é caracterizado por:",
+        "alternativas": [
+            "Movimento uniforme retilíneo.",
+            "Movimento harmônico simples.",
+            "Movimento aleatório.",
+            "Movimento exponencial crescente."
+        ],
+        "correta": 1,
+        "ajuda": "O sistema massa–mola apresenta oscilação senoidal em torno da posição de equilíbrio."
+    },
+    {
+        "pergunta": "Em sistemas mecânicos, o termo 'ξ' representa:",
+        "alternativas": [
+            "A constante de mola.",
+            "O fator de amortecimento.",
+            "O tempo característico.",
+            "A massa equivalente."
+        ],
+        "correta": 1,
+        "ajuda": "ξ indica o grau de amortecimento — define se o sistema é sub, super ou criticamente amortecido."
     }
 ]
-media = [
+
+medio = [
     {
         "pergunta": "O 'atraso de transferência' (lag) em um processo industrial é resultado do efeito combinado de quais duas propriedades?",
         "alternativas": [
@@ -119,7 +340,8 @@ media = [
             "Atraso de transporte e Atraso de transferência",
             "Massa e Aceleração"
         ],
-        "correta": 1
+        "correta": 1,
+        "ajuda": "O atraso de transferência é modelado como o efeito conjunto de resistência (R) e capacitância (C)."
     },
     {
         "pergunta": "Qual a principal diferença entre um modelo teórico (ou analítico) e um modelo empírico?",
@@ -129,7 +351,8 @@ media = [
             "O teórico é sempre linear e o empírico é sempre não-linear",
             "O teórico é para sistemas mecânicos e o empírico para sistemas químicos"
         ],
-        "correta": 1
+        "correta": 1,
+        "ajuda": "Modelos teóricos usam leis fundamentais; empíricos ajustam dados observados experimentalmente."
     },
     {
         "pergunta": "Em um sistema mecânico translacional ideal, qual elemento é responsável por armazenar energia potencial?",
@@ -139,7 +362,8 @@ media = [
             "A mola",
             "A força externa"
         ],
-        "correta": 2
+        "correta": 2,
+        "ajuda": "A mola ideal acumula energia potencial proporcional ao deslocamento elástico."
     },
     {
         "pergunta": "Em um sistema com dois tanques em cascata, o que caracteriza uma configuração de 'capacitâncias interativas'?",
@@ -149,7 +373,8 @@ media = [
             "Os dois tanques são idênticos em volume",
             "O fluido é transportado por uma bomba entre os tanques"
         ],
-        "correta": 1
+        "correta": 1,
+        "ajuda": "Quando o nível de um tanque influencia o outro, há interação entre as capacitâncias hidráulicas."
     },
     {
         "pergunta": "Qual elemento ideal de um sistema mecânico translacional é análogo a um resistor em um sistema elétrico (considerando a segunda analogia Tensão ↔ Força)?",
@@ -159,7 +384,8 @@ media = [
             "Amortecedor",
             "Força externa"
         ],
-        "correta": 2
+        "correta": 2,
+        "ajuda": "O amortecedor representa dissipação de energia mecânica, assim como o resistor dissipa energia elétrica."
     },
     {
         "pergunta": "O processo de comparar os valores simulados de um modelo com dados reais do sistema para detectar e corrigir erros é denominado:",
@@ -169,7 +395,8 @@ media = [
             "Linearização do Modelo",
             "Otimização do Modelo"
         ],
-        "correta": 1
+        "correta": 1,
+        "ajuda": "A validação garante que o modelo representa corretamente o comportamento real do sistema."
     },
     {
         "pergunta": "Qual a relação matemática fundamental (Lei de Hooke) para uma mola ideal de constante k?",
@@ -179,7 +406,8 @@ media = [
             "F = k ⋅ x",
             "F = k / x"
         ],
-        "correta": 2
+        "correta": 2,
+        "ajuda": "A força elástica é diretamente proporcional ao deslocamento: F = k·x."
     },
     {
         "pergunta": "Qual é a função primária de um amortecedor ideal em um sistema mecânico?",
@@ -189,7 +417,8 @@ media = [
             "Dissipar energia",
             "Gerar movimento"
         ],
-        "correta": 2
+        "correta": 2,
+        "ajuda": "Amortecedores transformam energia mecânica em calor, estabilizando o movimento."
     },
     {
         "pergunta": "Considerando a primeira analogia (Força ↔ Corrente), o análogo elétrico de uma massa (m) é um:",
@@ -199,7 +428,8 @@ media = [
             "Fonte de Tensão (V)",
             "Capacitor (C)"
         ],
-        "correta": 3
+        "correta": 1,
+        "ajuda": "A massa armazena energia cinética, assim como o indutor armazena energia magnética."
     },
     {
         "pergunta": "A principal simplificação ao se modelar um sistema com parâmetros concentrados em vez de distribuídos é:",
@@ -209,109 +439,117 @@ media = [
             "Desprezar as variações espaciais das propriedades",
             "Considerar o sistema em regime permanente"
         ],
-        "correta": 2
-    }
-]
-
-dificil = [
-    {
-        "pergunta": "Para um tanque de nível com escoamento turbulento na saída, a vazão de saída (Qs) é proporcional a qual variável?",
-        "alternativas": [
-            "À altura do nível (H)",
-            "Ao quadrado da altura do nível (H²)",
-            "À raiz quadrada da perda de pressão na válvula (√ΔP)",
-            "À perda de pressão na válvula (ΔP)"
-        ],
-        "correta": 2
+        "correta": 2,
+        "ajuda": "Modelos concentrados assumem que variáveis são uniformes em todo o domínio físico."
     },
     {
-        "pergunta": "Em um sistema mecânico rotacional, qual é a equação constitutiva que relaciona o torque (T) e a velocidade angular relativa (ω₂₁) em um amortecedor rotacional ideal com coeficiente B?",
+        "pergunta": "Em um circuito RLC, o termo R/L na equação diferencial representa:",
         "alternativas": [
-            "T = B / ω₂₁",
-            "T = B ⋅ ω₂₁²",
-            "T = B ⋅ ∫ω₂₁ dt",
-            "T = B ⋅ ω₂₁"
+            "O ganho do sistema.",
+            "A taxa de amortecimento elétrico.",
+            "O tempo de carga do capacitor.",
+            "A energia armazenada no indutor."
         ],
-        "correta": 3
+        "correta": 1,
+        "ajuda": "R/L controla o amortecimento da corrente no circuito — comportamento análogo ao atrito mecânico."
     },
     {
-        "pergunta": "Qual é a fórmula da rigidez equivalente (k_EQ) para duas molas ideais (k₁ e k₂) associadas em série?",
+        "pergunta": "No sistema massa–mola–amortecedor, a razão c/m define:",
         "alternativas": [
-            "k_EQ = k₁ + k₂",
-            "k_EQ = (k₁ ⋅ k₂) / (k₁ + k₂)",
-            "k_EQ = (k₁ + k₂) / 2",
-            "k_EQ = k₁ ⋅ k₂"
+            "A frequência natural do sistema.",
+            "A velocidade inicial do movimento.",
+            "O coeficiente de amortecimento normalizado.",
+            "A força resultante aplicada."
         ],
-        "correta": 1
+        "correta": 2,
+        "ajuda": "A razão c/m influencia a rapidez com que o sistema retorna ao equilíbrio após uma perturbação."
     },
     {
-        "pergunta": "O fenômeno de atraso que ocorre devido ao tempo que um fluido leva para percorrer uma tubulação de um ponto a outro é denominado:",
+        "pergunta": "Na modelagem mecânica, o termo k/m influencia diretamente:",
         "alternativas": [
-            "Atraso de transferência de 1ª ordem",
-            "Atraso capacitivo",
-            "Atraso de transporte (tempo morto)",
-            "Atraso interativo"
+            "A frequência natural do sistema.",
+            "A dissipação de energia.",
+            "A amplitude inicial.",
+            "A constante de tempo térmica."
         ],
-        "correta": 2
+        "correta": 0,
+        "ajuda": "A relação k/m determina a frequência natural das oscilações do sistema massa–mola."
     },
     {
-        "pergunta": "Qual é a equação de movimento para um sistema massa-mola-amortecedor simples, onde 'm' é a massa, 'b' o coeficiente de amortecimento, 'k' a constante da mola, 'x' o deslocamento e 'Fe' a força externa?",
+        "pergunta": "Quando ξ = 1, o sistema massa–mola–amortecedor é classificado como:",
         "alternativas": [
-            "mẍ + kx = Fe - bẋ",
-            "mẍ = Fe + bẋ + kx",
-            "mẍ + bẋ + kx = Fe",
-            "mx + bẋ + kx = Fe"
+            "Superamortecido",
+            "Criticamente amortecido",
+            "Subamortecido",
+            "Sem amortecimento"
         ],
-        "correta": 2
+        "correta": 1,
+        "ajuda": "No amortecimento crítico o sistema retorna ao equilíbrio no menor tempo possível sem oscilar."
     },
     {
-        "pergunta": "Para um conjunto ideal de engrenagens, qual a relação entre os torques (Tₐ, Tₑ) e os raios (rₐ, rₑ)?",
+        "pergunta": "Na Segunda Lei de Kirchhoff, se a soma das tensões for diferente de zero, isso indica:",
         "alternativas": [
-            "Tₐ / Tₑ = rₑ / rₐ",
-            "Tₐ / Tₑ = rₐ / rₑ",
-            "Tₐ ⋅ Tₑ = rₐ ⋅ rₑ",
-            "Tₐ + Tₑ = rₐ + rₑ"
+            "Violação da conservação de energia.",
+            "Circuito em regime permanente.",
+            "Equilíbrio dinâmico do sistema.",
+            "Resistores ideais."
         ],
-        "correta": 1
+        "correta": 0,
+        "ajuda": "Se ΣV ≠ 0, há perda ou ganho não previsto de energia — o circuito não obedece à lei de conservação."
     },
     {
-        "pergunta": "Um circuito elétrico RLC em série resulta em uma equação diferencial de que ordem?",
+        "pergunta": "Em um sistema rotacional, o análogo da massa (m) é:",
         "alternativas": [
-            "Ordem zero (algébrica)",
-            "Primeira ordem",
-            "Segunda ordem",
-            "Terceira ordem"
+            "O torque aplicado.",
+            "O momento de inércia (J).",
+            "A velocidade angular (ω).",
+            "A energia potencial."
         ],
-        "correta": 2
+        "correta": 1,
+        "ajuda": "O momento de inércia mede a resistência à variação da velocidade angular, como m faz na translação."
     },
     {
-        "pergunta": "Como um processo multicapacitivo de ordem elevada pode ser frequentemente aproximado para simplificar a análise?",
+        "pergunta": "Qual grandeza está associada à conservação de momento angular?",
         "alternativas": [
-            "Como um sistema puramente integrador",
-            "Como um atraso de transferência de 1ª ordem mais um tempo morto",
-            "Como um ganho estático puro",
-            "Como um sistema de 2ª ordem superamortecido"
+            "Torque.",
+            "Energia cinética.",
+            "Força centrípeta.",
+            "Velocidade linear."
         ],
-        "correta": 1
+        "correta": 0,
+        "ajuda": "O torque é a causa da variação do momento angular de um corpo em rotação."
     },
     {
-        "pergunta": "Qual a energia potencial (Ep) armazenada em uma mola ideal com constante de rigidez 'k' e deformação 'x'?",
+        "pergunta": "Em um circuito RC, o tempo necessário para o capacitor atingir 63% da carga final é chamado de:",
         "alternativas": [
-            "Ep = k ⋅ x",
-            "Ep = ½ ⋅ k ⋅ x",
-            "Ep = k ⋅ x²",
-            "Ep = ½ ⋅ k ⋅ x²"
+            "Tempo de resposta.",
+            "Constante de tempo (τ).",
+            "Tempo de amortecimento.",
+            "Tempo de atraso."
         ],
-        "correta": 3
+        "correta": 1,
+        "ajuda": "A constante de tempo τ indica o tempo para o capacitor atingir 63,2% da tensão final."
     },
     {
-        "pergunta": "No método analítico, o Estágio B (derivar o modelo matemático) envolve a combinação de quais tipos de relações?",
+        "pergunta": "A conservação de energia mecânica é válida apenas quando:",
         "alternativas": [
-            "Apenas relações de equilíbrio",
-            "Apenas relações constitutivas",
-            "Relações de equilíbrio (ou compatibilidade) e relações constitutivas",
-            "Relações empíricas e dados experimentais"
+            "Há dissipação por atrito.",
+            "Não há forças não-conservativas.",
+            "A massa é constante.",
+            "O sistema é linear."
         ],
-        "correta": 2
+        "correta": 1,
+        "ajuda": "A energia mecânica total se conserva apenas na ausência de forças dissipativas, como atrito ou amortecimento."
+    },
+    {
+        "pergunta": "A equação m·ẍ + c·ẋ + kx = 0 representa:",
+        "alternativas": [
+            "Um sistema elétrico RLC paralelo.",
+            "Um sistema massa–mola–amortecedor livre.",
+            "Um sistema oscilatório forçado.",
+            "Um modelo térmico com perdas."
+        ],
+        "correta": 1,
+        "ajuda": "Essa equação diferencial descreve o comportamento livre (sem força externa) de um sistema massa–mola–amortecedor."
     }
 ]
