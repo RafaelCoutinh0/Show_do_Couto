@@ -55,10 +55,11 @@ def registrar_usuario(nome, matricula, email):
             "nome": nome,
             "matricula": matricula,
             "email": email,
-            # 'senha' pode ser ausente se não informada; prefira usar registrar_usuario(nome, matricula, email, senha)
+            # 'senha' ausente
         }
-        requests.post(WEBHOOK_URL, json=data)
-        print("✅ Registro enviado com sucesso (sem senha)!")
+        headers = {"Content-Type": "application/json"}
+        resp = requests.post(WEBHOOK_URL, json=data, headers=headers, timeout=10)
+        print("✅ Registro enviado (sem senha):", resp.status_code, resp.text)
     except Exception as e:
         print("❌ Erro ao enviar o registro:", e)
 
@@ -71,10 +72,13 @@ def registrar_usuario_com_senha(nome, matricula, email, senha):
             "email": email,
             "senha": senha
         }
-        requests.post(WEBHOOK_URL, json=data)
-        print("✅ Registro enviado com sucesso (com senha)!")
+        headers = {"Content-Type": "application/json"}
+        resp = requests.post(WEBHOOK_URL, json=data, headers=headers, timeout=10)
+        print("✅ Registro enviado (com senha):", resp.status_code, resp.text)
+        return resp
     except Exception as e:
         print("❌ Erro ao enviar o registro com senha:", e)
+        return None
 
 # Compatibilidade com cores entre versões:
 try:
@@ -300,9 +304,23 @@ class ShowDoMilhao:
             height=70,
             style=botao_style
         )
+        # "Sair" deve apenas deslogar: chamar on_logout para voltar ao login/registro
+        def _sair_inicial(e):
+            try:
+                if callable(getattr(self, 'on_logout', None)):
+                    return self.on_logout()
+            except Exception:
+                pass
+            # fallback: mostrar tela de entrada (login/registro)
+            try:
+                self.page.clean()
+            except Exception:
+                pass
+            self.page.add(TelaEntrada(self.page, None))
+
         botao_sair = ft.ElevatedButton(
             "Sair",
-            on_click=lambda _: self.page.window.close() if hasattr(self.page, "window") else self.tela_inicial(),
+            on_click=_sair_inicial,
             bgcolor=(colors.RED if colors is not None else None),
             color=(colors.WHITE if colors is not None else None),
             width=300,
@@ -401,8 +419,20 @@ class ShowDoMilhao:
             width=160,
             on_click=self.ajuda_professor
         )
-        self.botao_desistir = ft.ElevatedButton("Desistir", bgcolor=(colors.ORANGE if colors is not None else None), color=(colors.WHITE if colors is not None else None), on_click=self.desistir)
-        self.botao_sair = ft.ElevatedButton("Sair", bgcolor=(colors.RED if colors is not None else None), color=(colors.WHITE if colors is not None else None), on_click=lambda _: self.tela_inicial())
+        # Sair deve apenas deslogar: chamar on_logout para voltar ao login/registro
+        def _sair_jogo(e):
+            try:
+                if callable(getattr(self, 'on_logout', None)):
+                    return self.on_logout()
+            except Exception:
+                pass
+            try:
+                self.page.clean()
+            except Exception:
+                pass
+            self.page.add(TelaEntrada(self.page, None))
+
+        self.botao_sair = ft.ElevatedButton("Sair", bgcolor=(colors.RED if colors is not None else None), color=(colors.WHITE if colors is not None else None), on_click=_sair_jogo)
         self.page.add(
             ft.Row([
                 ft.Column([
