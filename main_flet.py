@@ -5,6 +5,7 @@ import random
 import traceback
 import flet as ft
 import requests
+import json
 import base64
 from pathlib import Path
 import hashlib
@@ -22,10 +23,13 @@ def registrar_usuario(nome, matricula, email, senha):
         "nome": nome.strip(),
         "matricula": matricula.strip(),
         "email": email.strip(),
+        # envia o hash puro (sem apóstrofo) — manter compatibilidade com o doPost atual
         "senha": hash_senha(senha)
     }
     try:
-        r = requests.post(WEBHOOK_URL, json=payload, timeout=10)
+        print("DEBUG payload register:", payload)
+        headers = {"Content-Type": "application/json"}
+        r = requests.post(WEBHOOK_URL, data=json.dumps(payload), headers=headers, timeout=10)
         print("DEBUG registro:", r.text)
         return "REGISTER_OK" in r.text
     except Exception as e:
@@ -39,7 +43,9 @@ def login_usuario(matricula, senha):
         "senha": hash_senha(senha)
     }
     try:
-        r = requests.post(WEBHOOK_URL, json=payload, timeout=10)
+        headers = {"Content-Type": "application/json"}
+        r = requests.post(WEBHOOK_URL, data=json.dumps(payload), headers=headers, timeout=10)
+        print("DEBUG payload login:", payload)
         print("DEBUG login:", r.text)
         return "LOGIN_OK" in r.text
     except Exception as e:
