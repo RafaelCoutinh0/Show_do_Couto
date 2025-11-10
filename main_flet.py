@@ -10,6 +10,7 @@ import base64
 from pathlib import Path
 
 WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbwIVi_uiA-MFKIpwsjH9oQuLnmjxt2WOJKan5KbTYiuLCjjkkVlqbaVCga3TywM2mw_8A/exec"
+GS_URL = "https://script.google.com/macros/s/AKfycbwIVi_uiA-MFKIpwsjH9oQuLnmjxt2WOJKan5KbTYiuLCjjkkVlqbaVCga3TywM2mw_8A/exec"
 
 def hash_senha(senha: str) -> str:
     # NÃO usar criptografia: retornar a senha em texto puro conforme solicitado
