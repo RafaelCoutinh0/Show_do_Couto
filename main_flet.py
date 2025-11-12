@@ -364,25 +364,12 @@ class ShowDoMilhao:
             on_click=self.ajuda_professor
         )
         # Sair deve apenas deslogar: chamar on_logout para voltar ao login/registro
-        def _sair_jogo(e):
-            try:
-                if callable(getattr(self, 'on_logout', None)):
-                    return self.on_logout()
-            except Exception:
-                pass
-            try:
-                self.page.clean()
-            except Exception:
-                pass
-            try:
-                show_control(self.page, lambda: TelaEntrada(self.page, None))
-            except Exception:
-                try:
-                    self.page.add(TelaEntrada(self.page, None))
-                except Exception:
-                    pass
-
-        self.botao_sair = ft.ElevatedButton("Sair", bgcolor=(colors.RED if colors is not None else None), color=(colors.WHITE if colors is not None else None), on_click=_sair_jogo)
+        self.botao_sair = ft.ElevatedButton(
+            "Sair",
+            bgcolor=(colors.RED if colors is not None else None),
+            color=(colors.WHITE if colors is not None else None),
+            on_click=lambda _: self.tela_inicial()  # Redireciona para a tela inicial
+        )
         self.botao_desistir = ft.ElevatedButton("Desistir", on_click=self.desistir)
         self.page.add(
             ft.Row([
