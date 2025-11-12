@@ -7,126 +7,26 @@ import json
 import base64
 from pathlib import Path
 
-WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbwIVi_uiA-MFKIpwsjH9oQuLnmjxt2WOJKan5KbTYiuLCjjkkVlqbaVCga3TywM2mw_8A/exec"
-GS_URL = "https://script.google.com/macros/s/AKfycbwIVi_uiA-MFKIpwsjH9oQuLnmjxt2WOJKan5KbTYiuLCjjkkVlqbaVCga3TywM2mw_8A/exec"
+API_URL = "https://showapi-production.up.railway.app"
 
-def hash_senha(senha: str) -> str:
-    # NÃO usar criptografia: retornar a senha em texto puro conforme solicitado
-    # mantém tratamento de None e trim
-    s = (senha or "").strip()
-    return s
 
 def registrar_usuario(nome, matricula, email, senha):
-    payload = {
-        "action": "register",
-        "nome": (nome or "").strip(),
-        "matricula": (matricula or "").strip(),
-        "email": (email or "").strip(),
-        "senha": (senha or "").strip()
-    }
-    try:
-        r = requests.post(GS_URL, json=payload, timeout=10)
-        if r.status_code != 200:
-            return (False, f"HTTP {r.status_code}: {r.text}")
-        try:
-            data = r.json()
-            if isinstance(data, dict) and data.get('success') in (True, 'true', 'True', 1):
-                return (True, data)
-            msg = str(data.get('message') or '')
-            if 'REGISTER_OK' in msg or msg.upper() in ('OK', 'SUCCESS'):
-                return (True, data)
-            return (False, data)
-        except Exception:
-            text = (r.text or '').strip()
-            if 'REGISTER_OK' in text or text.upper() in ('OK','SUCCESS'):
-                return (True, r.text)
-            return (False, r.text)
-    except Exception as e:
-        return (False, str(e))
-
+    r = requests.post(f"{API_URL}/register", json={
+        "nome": nome,
+        "matricula": matricula,
+        "email": email,
+        "senha": senha
+    })
+    return r.json()
 
 def login_usuario(matricula, senha):
-    """Tenta autenticar o usuário. Primeiro tenta GET, se não houver sucesso tenta POST.
-    Retorna (True, dados) em caso de sucesso, (False, mensagem) em caso de falha.
-    """
-    matricula = (matricula or "").strip()
-    senha = (senha or "").strip()
-    params = {
-        "action": "login",
+    r = requests.post(f"{API_URL}/login", json={
         "matricula": matricula,
         "senha": senha
-    }
-    try:
-        # tentativa via GET
-        r = requests.get(GS_URL, params=params, timeout=10)
-    except Exception as e_get:
-        r = None
-        err_get = str(e_get)
-    else:
-        err_get = None
+    })
+    return r.json()
 
-    def _parse_response(rsp):
-        # recebe um Response e decide se é sucesso
-        try:
-            if rsp is None:
-                return (False, "Sem resposta do servidor (GET falhou).")
-            if rsp.status_code != 200:
-                return (False, f"HTTP {rsp.status_code}: {rsp.text}")
-            # tenta JSON
-            try:
-                data = rsp.json()
-                # Casos comuns: { "success": true }, { "status": "OK" }, ou retorno com dados do usuário
-                if isinstance(data, dict):
-                    if data.get("success") in (True, "true", "True", 1) or str(data.get("status", "")).upper() in ("OK", "SUCCESS"):
-                        return (True, data)
-                    # se vier um obj usuário (ex: possui matricula/nome/email), considerar sucesso
-                    if any(k in data for k in ("matricula", "email", "nome", "user", "id")):
-                        return (True, data)
-                    # se houver uma mensagem indicando login ok
-                    msg = str(data.get("message") or "").upper()
-                    if "LOGIN_OK" in msg or msg in ("OK", "SUCCESS"):
-                        return (True, data)
-                    return (False, data)
-                # se JSON for outro tipo, avaliar texto
-            except Exception:
-                pass
-            text = (rsp.text or "").strip()
-            txt_up = text.upper()
-            if "LOGIN_OK" in txt_up or txt_up == "OK" or "SUCCESS" in txt_up:
-                return (True, text)
-            return (False, text)
-        except Exception as ex:
-            return (False, str(ex))
 
-    # tentar analisar resposta GET
-    ok, resp = _parse_response(r if r is not None else None)
-    if ok:
-        return (True, resp)
-
-    # se GET falhou ou não indicou sucesso, tentar POST como fallback
-    try:
-        payload = {"action": "login", "matricula": matricula, "senha": senha}
-        r2 = requests.post(GS_URL, json=payload, timeout=10)
-        ok2, resp2 = _parse_response(r2)
-        if ok2:
-            return (True, resp2)
-        # retornar a melhor mensagem possível (prioriza r2, depois r, depois exceção)
-        if r2 is not None and getattr(r2, "text", None):
-            return (False, r2.text)
-    except Exception as e_post:
-        # se POST falhar, relatar ambos erros se existirem
-        msg = ""
-        if err_get:
-            msg += f"GET erro: {err_get}. "
-        msg += f"POST erro: {str(e_post)}"
-        return (False, msg)
-
-    # sem sucesso nos dois
-    if r is not None and getattr(r, "text", None):
-        return (False, r.text)
-    if err_get:
-        return (False, err_get)
-    return (False, "Resposta inesperada do servidor.")
 
 # Compatibilidade com cores entre versões:
 try:
