@@ -11,21 +11,59 @@ API_URL = "https://showapi-production.up.railway.app"
 
 
 def registrar_usuario(nome, matricula, email, senha):
-    r = requests.post(f"{API_URL}/register", json={
-        "nome": nome,
-        "matricula": matricula,
-        "email": email,
-        "senha": senha
-    })
-    return r.json()
+    try:
+        r = requests.post(f"{API_URL}/register", json={
+            "nome": nome,
+            "matricula": matricula,
+            "email": email,
+            "senha": senha
+        }, timeout=10)
+        try:
+            data = r.json()
+        except Exception:
+            data = r.text
+        ok = False
+        if isinstance(data, dict):
+            # prioriza campos explícitos
+            if "ok" in data:
+                ok = bool(data.get("ok"))
+            elif "success" in data:
+                ok = bool(data.get("success"))
+            else:
+                # sem campo explícito, inferir por status HTTP
+                ok = r.status_code in (200, 201)
+        else:
+            ok = r.status_code in (200, 201)
+        return ok, data
+    except Exception as ex:
+        return False, str(ex)
 
 def login_usuario(matricula, senha):
-    r = requests.post(f"{API_URL}/login", json={
-        "matricula": matricula,
-        "senha": senha
-    })
-    return r.json()
-
+    try:
+        r = requests.post(f"{API_URL}/login", json={
+            "matricula": matricula,
+            "senha": senha
+        }, timeout=10)
+        try:
+            data = r.json()
+        except Exception:
+            data = r.text
+        ok = False
+        if isinstance(data, dict):
+            if "ok" in data:
+                ok = bool(data.get("ok"))
+            elif "success" in data:
+                ok = bool(data.get("success"))
+            elif "token" in data and data.get("token"):
+                # API pode retornar token em login bem sucedido
+                ok = True
+            else:
+                ok = r.status_code in (200, 201)
+        else:
+            ok = r.status_code in (200, 201)
+        return ok, data
+    except Exception as ex:
+        return False, str(ex)
 
 
 # Compatibilidade com cores entre versões:
