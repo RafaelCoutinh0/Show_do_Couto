@@ -699,16 +699,9 @@ class ShowDoMilhao:
             )
         )
 
-# Compatibilidade: algumas versões do flet não expõem 'UserControl'.
-# Criar um substituto leve que herda de Container e fornece build() padrão.
-if not hasattr(ft, "UserControl"):
-    class _UserControl(ft.Container):
-        def __init__(self, *args, **kwargs):
-            super().__init__(*args, **kwargs)
-        def build(self):
-            # Many existing classes implement build(); retornar self é suficiente para Container-based compat.
-            return self
-    ft.UserControl = _UserControl
+# Compatibilidade: substituir UserControl por Control
+if not hasattr(ft, "Control"):
+    ft.Control = ft.Container  # Fallback para versões antigas
 
 # Nova função: mostra/atualiza mensagem simples na página (sem diálogos)
 def _page_message(page: ft.Page, message: str, color=None):
@@ -813,7 +806,7 @@ def show_control(page: ft.Page, control_or_factory, *args, **kwargs):
             pass
         return None
 
-class TelaEntrada(ft.UserControl):
+class TelaEntrada(ft.Control):  # Substituir UserControl por Control
     def __init__(self, page, callback):
         super().__init__()
         self.page = page
@@ -855,11 +848,14 @@ class TelaEntrada(ft.UserControl):
 
     def registrar(self, e):
         try:
+            # Garantir que TelaRegistro seja exibida corretamente
             show_control(self.page, lambda: TelaRegistro(self.page, self.callback))
+            self.page.update()  # Forçar atualização da página
             return
-        except Exception:
+        except Exception as ex:
             import traceback as _tb
             tb = _tb.format_exc()
+            print("[ERROR] Erro ao abrir TelaRegistro:", tb)  # Log para depuração
             try:
                 _page_message(self.page, "Erro ao abrir Registro. Veja console.", (colors.RED if colors is not None else None))
             except Exception:
@@ -892,7 +888,7 @@ class TelaEntrada(ft.UserControl):
             pass
 
 # Novas classes adicionadas: TelaLogin e TelaRegistro
-class TelaLogin(ft.UserControl):
+class TelaLogin(ft.Control):  # Substituir UserControl por Control
     def __init__(self, page, callback):
         super().__init__()
         self.page = page
@@ -952,16 +948,8 @@ class TelaLogin(ft.UserControl):
                 except Exception:
                     pass
         else:
-            msg = resp
-            try:
-                if isinstance(resp, dict):
-                    msg = json.dumps(resp, ensure_ascii=False)
-                else:
-                    msg = str(resp)
-            except Exception:
-                msg = str(resp)
-            # mostrar mensagem vermelha e limpar senha
-            self.msg.value = msg
+            # Mostrar mensagem de erro em vermelho
+            self.msg.value = "Senha ou Matricula Incorreta!"
             self.msg.color = (colors.RED if colors is not None else None)
             try:
                 self.senha.value = ""
@@ -987,7 +975,7 @@ class TelaLogin(ft.UserControl):
                 pass
 
 
-class TelaRegistro(ft.UserControl):
+class TelaRegistro(ft.Control):  # Substituir UserControl por Control
     def __init__(self, page, callback):
         super().__init__()
         self.page = page
@@ -1050,8 +1038,9 @@ class TelaRegistro(ft.UserControl):
                     pass
                 try:
                     show_control(self.page, lambda: TelaLogin(self.page, self.callback))
-                except Exception:
-                    pass
+                    self.page.update()  # Forçar atualização após redirecionamento
+                except Exception as ex:
+                    print("[ERROR] Erro ao redirecionar para TelaLogin:", ex)
             try:
                 # executar em thread leve sem bloquear UI
                 import threading
@@ -1059,6 +1048,7 @@ class TelaRegistro(ft.UserControl):
             except Exception:
                 try:
                     show_control(self.page, lambda: TelaLogin(self.page, self.callback))
+                    self.page.update()
                 except Exception:
                     pass
         else:
