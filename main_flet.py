@@ -851,7 +851,6 @@ class TelaEntrada(ft.Control):  # Substituir UserControl por Control
             # Garantir que TelaRegistro seja exibida corretamente
             show_control(self.page, lambda: TelaRegistro(self.page, self.callback))
             self.page.update()  # Forçar atualização da página
-            return
         except Exception as ex:
             import traceback as _tb
             tb = _tb.format_exc()
@@ -1060,6 +1059,22 @@ class TelaRegistro(ft.Control):  # Substituir UserControl por Control
             except Exception:
                 pass
             try:
+                self.page.update()
+            except Exception:
+                pass
+
+    def on_voltar(self, e):
+        try:
+            # Voltar para a tela de entrada
+            show_control(self.page, lambda: TelaEntrada(self.page, self.callback))
+        except Exception as ex:
+            print("[ERROR] Erro ao voltar para TelaEntrada:", ex)
+            try:
+                self.page.clean()
+            except Exception:
+                pass
+            try:
+                self.page.add(TelaEntrada(self.page, self.callback))
                 self.page.update()
             except Exception:
                 pass
