@@ -1126,20 +1126,20 @@ def main(page: ft.Page):
     try:
         # mostra a tela de entrada e passa o callback iniciar_jogo (usar show_control para compat)
         show_control(page, lambda: TelaEntrada(page, iniciar_jogo))
-         try:
-             page.update()
-         except Exception:
-             pass
-     except Exception:
-         try:
-             import traceback as _tb
-             tb = _tb.format_exc()
-         except Exception:
-             tb = "Erro desconhecido"
-         try:
-             _page_message(page, "Erro na inicialização. Veja console.", (colors.RED if colors is not None else None))
-         except Exception:
-             pass
+        try:
+            page.update()
+        except Exception:
+            pass
+    except Exception:
+        try:
+            import traceback as _tb
+            tb = _tb.format_exc()
+        except Exception:
+            tb = "Erro desconhecido"
+        try:
+            _page_message(page, "Erro na inicialização. Veja console.", (colors.RED if colors is not None else None))
+        except Exception:
+            pass
 
 
 if __name__ == "__main__":
@@ -1159,6 +1159,6 @@ if __name__ == "__main__":
         # 💻 Modo APP (rodando no PC local)
         ft.app(
             target=main,
-            view=ft.app,      # ✅ importante para gerar APK e rodar localmente
+            view=ft.AppView,  # ✅ importante para gerar APK e rodar localmente
             assets_dir="."    # ✅ necessário para carregar logo.png
         )
