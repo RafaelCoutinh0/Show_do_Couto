@@ -363,13 +363,6 @@ class ShowDoMilhao:
             width=160,
             on_click=self.ajuda_professor
         )
-        # Sair deve apenas deslogar: chamar on_logout para voltar ao login/registro
-        self.botao_sair = ft.ElevatedButton(
-            "Sair",
-            bgcolor=(colors.RED if colors is not None else None),
-            color=(colors.WHITE if colors is not None else None),
-            on_click=lambda _: self.tela_inicial()  # Redireciona para a tela inicial
-        )
         self.botao_desistir = ft.ElevatedButton("Desistir", on_click=self.desistir)
         self.page.add(
             ft.Row([
@@ -379,7 +372,7 @@ class ShowDoMilhao:
                     ft.Row([self.botao_ajuda, self.botao_troca, self.botao_professor]),
                     self.label_feedback,
                     self.label_saldo,
-                    ft.Row([self.botao_desistir, self.botao_sair]),
+                    ft.Row([self.botao_desistir]),  # Removido o botão "Sair"
                 ], alignment=ft.MainAxisAlignment.START),
                 ft.Column(regua, alignment=ft.MainAxisAlignment.START, spacing=0)
             ], alignment=ft.MainAxisAlignment.CENTER)
@@ -451,7 +444,7 @@ class ShowDoMilhao:
                         ft.Row([self.botao_ajuda, self.botao_troca, self.botao_professor]),
                         self.label_feedback,
                         self.label_saldo,
-                        ft.Row([self.botao_desistir, self.botao_sair]),
+                        ft.Row([self.botao_desistir]),
                     ], alignment=ft.MainAxisAlignment.START),
                     ft.Column(self.labels_regua, alignment=ft.MainAxisAlignment.START, spacing=0)
                 ], alignment=ft.MainAxisAlignment.CENTER)
