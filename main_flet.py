@@ -286,23 +286,9 @@ class ShowDoMilhao:
         except Exception as exc:
             tb = _tb.format_exc()
             print("[ERROR] Exception em iniciar_jogo:\n", tb)
-            # mostra diálogo com erro para evitar tela cinza
+            # substituir diálogo por mensagem inline
             try:
-                dlg = ft.AlertDialog(
-                    title=ft.Text("Erro ao iniciar jogo"),
-                    content=ft.Text("Ocorreu um erro ao iniciar o jogo. Veja o console."),
-                    actions=[]
-                )
-                # definir ação após criar dlg para evitar NameError ao capturar dlg na lambda
-                dlg.actions = [ft.TextButton("OK", on_click=lambda e, dlg=dlg: _close_dialog(self.page, dlg))]
-                self.page.dialog = dlg
-                if dlg not in self.page.overlay:
-                    self.page.overlay.append(dlg)
-                dlg.open = True
-                try:
-                    self.page.update()
-                except Exception:
-                    pass
+                _page_message(self.page, "Erro ao iniciar jogo. Veja console.", (colors.RED if colors is not None else None))
             except Exception:
                 pass
             return
@@ -654,62 +640,51 @@ class ShowDoMilhao:
         )
 
     def desistir(self, e=None):
-        def confirmar_dlg(e):
-            if e.control.text == "Sim":
-                dlg.open = False
-                try:
-                    self.page.update()
-                except Exception:
-                    pass
-                self.page.dialog = None
-                if dlg in self.page.overlay:
-                    self.page.overlay.remove(dlg)
-                self.page.clean()
-                msg = ft.Text(
-                    f"💰 Você desistiu!\nSaiu com R${self.pontos}",
-                    size=24,
-                    color=(colors.ORANGE if colors is not None else None),
-                    weight=ft.FontWeight.BOLD,
-                    text_align=ft.TextAlign.CENTER
-                )
-                botao_voltar = ft.ElevatedButton(
-                    "Voltar ao início",
-                    bgcolor=(colors.BLUE if colors is not None else None),
-                    color=(colors.WHITE if colors is not None else None),
-                    on_click=lambda _: self.tela_inicial()
-                )
-                self.page.add(
-                    ft.Container(
-                        content=ft.Column([msg, botao_voltar], alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER),
-                        alignment=ft.alignment.center,
-                        expand=True
-                    )
-                )
-            else:
-                dlg.open = False
-                try:
-                    self.page.update()
-                except Exception:
-                    pass
-                self.page.dialog = None
-                if dlg in self.page.overlay:
-                    self.page.overlay.remove(dlg)
-        dlg = ft.AlertDialog(
-            title=ft.Text("Desistir?"),
-            content=ft.Text(f"Você deseja desistir e sair com R${self.pontos}?"),
-            actions=[
-                ft.TextButton("Sim", on_click=confirmar_dlg),
-                ft.TextButton("Não", on_click=confirmar_dlg)
-            ]
-        )
-        self.page.dialog = dlg
-        if dlg not in self.page.overlay:
-            self.page.overlay.append(dlg)
-        dlg.open = True
+        # Sem diálogos: processa desistência imediatamente
         try:
-            self.page.update()
+            self.page.dialog = None
         except Exception:
             pass
+        try:
+            # limpar eventuais AlertDialogs remanescentes na overlay (compat)
+            ov = getattr(self.page, "overlay", [])
+            for it in list(ov):
+                try:
+                    if getattr(it, "__class__", None).__name__ == "AlertDialog":
+                        try:
+                            ov.remove(it)
+                        except Exception:
+                            pass
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+        # ação de desistir (mesma lógica do "Sim" anterior)
+        try:
+            self.page.clean()
+        except Exception:
+            pass
+        msg = ft.Text(
+            f"💰 Você desistiu!\nSaiu com R${self.pontos}",
+            size=24,
+            color=(colors.ORANGE if colors is not None else None),
+            weight=ft.FontWeight.BOLD,
+            text_align=ft.TextAlign.CENTER
+        )
+        botao_voltar = ft.ElevatedButton(
+            "Voltar ao início",
+            bgcolor=(colors.BLUE if colors is not None else None),
+            color=(colors.WHITE if colors is not None else None),
+            on_click=lambda _: self.tela_inicial()
+        )
+        self.page.add(
+            ft.Container(
+                content=ft.Column([msg, botao_voltar], alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER),
+                alignment=ft.alignment.center,
+                expand=True
+            )
+        )
 
 # Compatibilidade: algumas versões do flet não expõem 'UserControl'.
 # Criar um substituto leve que herda de Container e fornece build() padrão.
@@ -722,40 +697,37 @@ if not hasattr(ft, "UserControl"):
             return self
     ft.UserControl = _UserControl
 
-def show_control(page: ft.Page, control_callable):
-    """Limpa a página e adiciona um novo controle criado por control_callable().
-    control_callable deve ser uma função que retorna o controle (para evitar criar
-    controles antes da operação de limpeza em alguns ambientes).
-    """
+# Nova função: mostra/atualiza mensagem simples na página (sem diálogos)
+def _page_message(page: ft.Page, message: str, color=None):
     try:
-        # limpar primeiro
-        try:
-            page.clean()
-        except Exception:
-            pass
-        # criar controle (callable para atrasar construção) e adicionar
-        control = control_callable()
-        page.add(control)
+        if not message:
+            message = ""
+        txt = getattr(page, "_page_message", None)
+        if txt is None:
+            txt = ft.Text(message, color=color, size=14)
+            page._page_message = txt
+            try:
+                # adicionar no topo; dependendo do fluxo, page.clean() pode remover isso
+                page.add(txt)
+            except Exception:
+                try:
+                    page.controls.insert(0, txt)
+                except Exception:
+                    pass
+        else:
+            txt.value = message
+            if color is not None:
+                try:
+                    txt.color = color
+                except Exception:
+                    pass
         try:
             page.update()
         except Exception:
             pass
-    except Exception:
-        # última tentativa: limpar e adicionar um placeholder de entrada
-        try:
-            page.clean()
-        except Exception:
-            pass
-        try:
-            page.add(TelaEntrada(page, None))
-            try:
-                page.update()
-            except Exception:
-                pass
-        except Exception:
-            pass
+    except Exception as ex:
+        print("Erro _page_message:", ex)
 
-# Mover as classes TelaEntrada e TelaLogin para fora da função main
 class TelaEntrada(ft.UserControl):
     def __init__(self, page, callback):
         super().__init__()
@@ -804,7 +776,7 @@ class TelaEntrada(ft.UserControl):
             import traceback as _tb
             tb = _tb.format_exc()
             try:
-                _show_error_dialog(self.page, "Erro ao abrir Registro", tb)
+                _page_message(self.page, "Erro ao abrir Registro. Veja console.", (colors.RED if colors is not None else None))
             except Exception:
                 pass
         try:
@@ -825,7 +797,7 @@ class TelaEntrada(ft.UserControl):
             return
         except Exception as ex:
             try:
-                _show_error_dialog(self.page, "Erro ao entrar como convidado", str(ex))
+                _page_message(self.page, "Erro ao entrar como convidado", str(ex))
             except Exception:
                 pass
         # fallback: voltar à tela de entrada
@@ -842,6 +814,7 @@ class TelaLogin(ft.UserControl):
         self.callback = callback
         self.matricula = ft.TextField(label="Matrícula", width=320)
         self.senha = ft.TextField(label="Senha", password=True, can_reveal_password=True, width=320)
+        self.msg = ft.Text("", size=14)  # área de mensagem inline
 
     def build(self):
         btn_ok = ft.ElevatedButton("Entrar", width=320, on_click=self.on_entrar)
@@ -852,7 +825,8 @@ class TelaLogin(ft.UserControl):
                 self.matricula,
                 self.senha,
                 btn_ok,
-                btn_voltar
+                btn_voltar,
+                self.msg  # mostrar mensagens aqui
             ],
             alignment=ft.MainAxisAlignment.CENTER,
             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
@@ -864,22 +838,35 @@ class TelaLogin(ft.UserControl):
         matricula = (self.matricula.value or "").strip()
         senha = (self.senha.value or "").strip()
         if not matricula or not senha:
-            _show_error_dialog(self.page, "Dados incompletos", "Informe matrícula e senha.")
+            self.msg.value = "Informe matrícula e senha."
+            self.msg.color = (colors.RED if colors is not None else None)
+            try:
+                self.page.update()
+            except Exception:
+                pass
             return
         try:
             ok, resp = login_usuario(matricula, senha)
         except Exception as ex:
-            _show_error_dialog(self.page, "Erro de rede", str(ex))
+            self.msg.value = str(ex)
+            self.msg.color = (colors.RED if colors is not None else None)
+            try:
+                self.page.update()
+            except Exception:
+                pass
             return
         if ok:
             try:
-                # Se resp for dict com dados do usuário, poderia-se armazenar se necessário
                 ShowDoMilhao(self.page, on_logout=lambda: show_control(self.page, lambda: TelaEntrada(self.page, self.callback)))
                 return
             except Exception as ex:
-                _show_error_dialog(self.page, "Erro ao iniciar jogo", str(ex))
+                self.msg.value = "Erro ao iniciar jogo."
+                self.msg.color = (colors.RED if colors is not None else None)
+                try:
+                    self.page.update()
+                except Exception:
+                    pass
         else:
-            # resp pode ser dict ou texto; transformar em mensagem legível
             msg = resp
             try:
                 if isinstance(resp, dict):
@@ -888,29 +875,17 @@ class TelaLogin(ft.UserControl):
                     msg = str(resp)
             except Exception:
                 msg = str(resp)
-            # duas ações: tentar novamente (apaga senha) e ir para Registrar
-            def _tentar_novamente():
-                try:
-                    self.senha.value = ""
-                    try:
-                        self.page.update()
-                    except Exception:
-                        pass
-                except Exception:
-                    pass
-
-            def _ir_registrar():
-                try:
-                    show_control(self.page, lambda: TelaRegistro(self.page, self.callback))
-                except Exception:
-                    pass
-
-            _show_error_dialog(
-                self.page,
-                "Login falhou",
-                msg,
-                actions=[("Tentar novamente", _tentar_novamente), ("Registrar", _ir_registrar)]
-            )
+            # mostrar mensagem vermelha e limpar senha
+            self.msg.value = msg
+            self.msg.color = (colors.RED if colors is not None else None)
+            try:
+                self.senha.value = ""
+            except Exception:
+                pass
+            try:
+                self.page.update()
+            except Exception:
+                pass
 
     def on_voltar(self, e):
         try:
@@ -936,6 +911,7 @@ class TelaRegistro(ft.UserControl):
         self.matricula = ft.TextField(label="Matrícula", width=320)
         self.email = ft.TextField(label="Email", width=320)
         self.senha = ft.TextField(label="Senha", password=True, can_reveal_password=True, width=320)
+        self.msg = ft.Text("", size=14)  # área de mensagem inline
 
     def build(self):
         btn_reg = ft.ElevatedButton("Registrar", width=320, on_click=self.on_registrar)
@@ -948,7 +924,8 @@ class TelaRegistro(ft.UserControl):
                 self.email,
                 self.senha,
                 btn_reg,
-                btn_voltar
+                btn_voltar,
+                self.msg  # mostrar mensagens aqui
             ],
             alignment=ft.MainAxisAlignment.CENTER,
             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
@@ -964,157 +941,55 @@ class TelaRegistro(ft.UserControl):
         try:
             ok, resp = registrar_usuario(nome, matricula, email, senha)
         except Exception as ex:
-            _show_error_dialog(self.page, "Erro de rede", str(ex))
-            return
-        if ok:
+            self.msg.value = str(ex)
+            self.msg.color = (colors.RED if colors is not None else None)
             try:
-                # ao registrar com sucesso, abrir diálogo que ao clicar em OK redireciona para tela de login
-                _show_error_dialog(
-                    self.page,
-                    "Registro OK",
-                    "Usuário registrado com sucesso. Faça login.",
-                    on_ok=lambda: show_control(self.page, lambda: TelaLogin(self.page, self.callback))
-                )
+                self.page.update()
             except Exception:
                 pass
-            # não chamar show_control imediatamente — espera OK do diálogo
-        else:
-            # em caso de falha, oferecer tentar novamente (apaga senha) e voltar para Login
-            def _tentar_novamente():
+            return
+        if ok:
+            # sucesso: mostrar mensagem verde e redirecionar para login após delay curto
+            self.msg.value = "Usuário registrado com sucesso. Redirecionando para Login..."
+            self.msg.color = (colors.GREEN if colors is not None else None)
+            try:
+                self.page.update()
+            except Exception:
+                pass
+            # agendar redirecionamento breve
+            def _delayed():
+                import time
                 try:
-                    self.senha.value = ""
-                    try:
-                        self.page.update()
-                    except Exception:
-                        pass
+                    time.sleep(1.2)
                 except Exception:
                     pass
-
-            def _ir_login():
                 try:
                     show_control(self.page, lambda: TelaLogin(self.page, self.callback))
                 except Exception:
                     pass
-
-            _show_error_dialog(
-                self.page,
-                "Registro falhou",
-                str(resp),
-                actions=[("Tentar novamente", _tentar_novamente), ("Ir para Login", _ir_login)]
-            )
-
-    def on_voltar(self, e):
-        try:
-            show_control(self.page, lambda: TelaEntrada(self.page, self.callback))
-        except Exception:
-            pass
-def _show_error_dialog(page: ft.Page, title: str, message: str, on_ok=None, actions=None):
-    try:
-        # garantir string e evitar conteúdo completamente vazio (que às vezes causa comportamento estranho)
-        msg_text = "" if message is None else str(message)
-        if not msg_text.strip():
-            # colocar um espaço para evitar renderização "vazia"
-            msg_text = " "
-        dlg = ft.AlertDialog(
-            title=ft.Text(title),
-            content=ft.Text(msg_text[:1000]),
-            actions=[]
-        )
-        # definir ações após criar dlg (evita problemas de closure)
-        def _make_click(cb):
-            def _click(e):
+            try:
+                # executar em thread leve sem bloquear UI
+                import threading
+                threading.Thread(target=_delayed, daemon=True).start()
+            except Exception:
                 try:
-                    _close_dialog(page, dlg)
+                    show_control(self.page, lambda: TelaLogin(self.page, self.callback))
                 except Exception:
                     pass
-                try:
-                    if callable(cb):
-                        cb()
-                except Exception:
-                    pass
-            return _click
-
-        if actions and isinstance(actions, (list, tuple)):
-            btns = []
-            for label, cb in actions:
-                try:
-                    btns.append(ft.TextButton(label, on_click=_make_click(cb)))
-                except Exception:
-                    pass
-            if btns:
-                dlg.actions = btns
-        elif callable(on_ok):
-            dlg.actions = [ft.TextButton("OK", on_click=_make_click(on_ok))]
         else:
-            # comportamento padrão: apenas fechar
-            dlg.actions = [ft.TextButton("OK", on_click=_make_click(None))]
+            msg = str(resp)
+            self.msg.value = msg
+            self.msg.color = (colors.RED if colors is not None else None)
+            try:
+                self.senha.value = ""
+            except Exception:
+                pass
+            try:
+                self.page.update()
+            except Exception:
+                pass
 
-        # atribuir e garantir que não restem AlertDialogs antigos na overlay
-        page.dialog = dlg
-        try:
-            # remover dialogs antigos do tipo AlertDialog (somente os que podem bloquear a UI)
-            ov = getattr(page, "overlay", [])
-            for it in list(ov):
-                try:
-                    # identificar por tipo/atributo simples para evitar remover outros overlays úteis
-                    if getattr(it, "__class__", None).__name__ == "AlertDialog":
-                        if it is not dlg:
-                            ov.remove(it)
-                except Exception:
-                    pass
-        except Exception:
-            pass
-        if dlg not in page.overlay:
-            page.overlay.append(dlg)
-        dlg.open = True
-        try:
-            page.update()
-        except Exception:
-            pass
-    except Exception:
-        pass
-
-
-def _close_dialog(page, dlg):
-    try:
-        # fechar dlg
-        try:
-            dlg.open = False
-        except Exception:
-            pass
-        # limpar referência principal
-        try:
-            if getattr(page, "dialog", None) is dlg:
-                page.dialog = None
-        except Exception:
-            pass
-        # remover quaisquer AlertDialogs remanescentes na overlay (incluindo o dlg)
-        try:
-            ov = getattr(page, "overlay", [])
-            for it in list(ov):
-                try:
-                    if it is dlg or getattr(it, "__class__", None).__name__ == "AlertDialog":
-                        try:
-                            ov.remove(it)
-                        except Exception:
-                            pass
-                except Exception:
-                    pass
-        except Exception:
-            pass
-        # forçar atualização para liberar a UI imediatamente
-        try:
-            page.update()
-        except Exception:
-            pass
-        # atualização extra por segurança
-        try:
-            page.update()
-        except Exception:
-            pass
-    except Exception:
-        pass
-
+# Removidas funções de AlertDialog; agora usar _page_message ou mensagens nas telas.
 
 def main(page: ft.Page):
     # define cor de fundo já na entrada para evitar tela cinza em formulários
@@ -1152,7 +1027,7 @@ def main(page: ft.Page):
             except Exception:
                 tb = "Erro desconhecido"
             try:
-                _show_error_dialog(page, "Erro ao iniciar interface", tb)
+                _page_message(page, "Erro ao iniciar interface", tb)
             except Exception:
                 pass
 
@@ -1171,7 +1046,7 @@ def main(page: ft.Page):
         except Exception:
             tb = "Erro desconhecido"
         try:
-            _show_error_dialog(page, "Erro na inicialização", tb)
+            _page_message(page, "Erro na inicialização. Veja console.", (colors.RED if colors is not None else None))
         except Exception:
             pass
 
