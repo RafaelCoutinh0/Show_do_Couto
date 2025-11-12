@@ -288,7 +288,13 @@ class ShowDoMilhao:
             print("[ERROR] Exception em iniciar_jogo:\n", tb)
             # mostra diálogo com erro para evitar tela cinza
             try:
-                dlg = ft.AlertDialog(title=ft.Text("Erro ao iniciar jogo"), content=ft.Text("Ocorreu um erro ao iniciar o jogo. Veja o console."), actions=[ft.TextButton("OK", on_click=lambda e: self._fechar_dialog(dlg))])
+                dlg = ft.AlertDialog(
+                    title=ft.Text("Erro ao iniciar jogo"),
+                    content=ft.Text("Ocorreu um erro ao iniciar o jogo. Veja o console."),
+                    actions=[]
+                )
+                # definir ação após criar dlg para evitar NameError ao capturar dlg na lambda
+                dlg.actions = [ft.TextButton("OK", on_click=lambda e, dlg=dlg: _close_dialog(self.page, dlg))]
                 self.page.dialog = dlg
                 if dlg not in self.page.overlay:
                     self.page.overlay.append(dlg)
@@ -949,8 +955,10 @@ def _show_error_dialog(page: ft.Page, title: str, message: str):
         dlg = ft.AlertDialog(
             title=ft.Text(title),
             content=ft.Text(str(message)[:1000]),
-            actions=[ft.TextButton("OK", on_click=lambda e: _close_dialog(page, dlg))]
+            actions=[]
         )
+        # atribuir actions depois que dlg já foi criado para evitar NameError
+        dlg.actions = [ft.TextButton("OK", on_click=lambda e, dlg=dlg: _close_dialog(page, dlg))]
         page.dialog = dlg
         if dlg not in page.overlay:
             page.overlay.append(dlg)
@@ -965,10 +973,27 @@ def _show_error_dialog(page: ft.Page, title: str, message: str):
 
 def _close_dialog(page, dlg):
     try:
-        dlg.open = False
-        page.dialog = None
-        if dlg in page.overlay:
-            page.overlay.remove(dlg)
+        # tenta fechar e remover de forma robusta, com várias tentativas de atualização
+        try:
+            dlg.open = False
+        except Exception:
+            pass
+        try:
+            if getattr(page, "dialog", None) is dlg:
+                page.dialog = None
+        except Exception:
+            pass
+        try:
+            if dlg in getattr(page, "overlay", []):
+                page.overlay.remove(dlg)
+        except Exception:
+            pass
+        # forçar atualização para liberar a UI imediatamente
+        try:
+            page.update()
+        except Exception:
+            pass
+        # atualização extra por segurança (algumas versões da UI podem precisar)
         try:
             page.update()
         except Exception:
@@ -1057,3 +1082,4 @@ if __name__ == "__main__":
             view=ft.APP,      # ✅ importante para gerar APK e rodar localmente
             assets_dir="."    # ✅ necessário para carregar logo.png
         )
+
