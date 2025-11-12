@@ -812,7 +812,7 @@ class TelaEntrada(ft.Control):  # Substituir UserControl por Control
             # fallback: caminho direto (requer assets_dir configurado)
             return ASSET_LOGO
 
-        logo = ft.Image(src=_get_logo_src(), width=900, height=450, fit=ft.ImageFit.CONTAIN)
+        logo = ft.Image(src=_get_logo_src(), width=1350, height=675, fit=ft.ImageFit.CONTAIN)
 
         btn_entrar = ft.ElevatedButton("Entrar", width=300, on_click=self.entrar)
         btn_registrar = ft.ElevatedButton("Registrar", width=300, on_click=self.registrar)
