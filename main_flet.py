@@ -728,6 +728,66 @@ def _page_message(page: ft.Page, message: str, color=None):
     except Exception as ex:
         print("Erro _page_message:", ex)
 
+# Função adicionada: show_control
+def show_control(page: ft.Page, control_or_factory, *args, **kwargs):
+    """
+    Substitui o conteúdo da página pelo controle retornado por control_or_factory.
+    control_or_factory pode ser:
+      - uma callable que retorna um controle/objeto com build(), ou
+      - uma instância de controle.
+    Retorna a instância criada (ou None em erro).
+    """
+    try:
+        # criar ou obter a instância do controle
+        ctrl = control_or_factory(*args, **kwargs) if callable(control_or_factory) else control_or_factory
+
+        # se tiver método build(), usar seu retorno (compat com UserControl)
+        built = ctrl
+        if hasattr(ctrl, "build") and callable(getattr(ctrl, "build")):
+            try:
+                built = ctrl.build() or ctrl
+            except Exception:
+                built = ctrl
+
+        # limpar a página (tenta várias estratégias)
+        try:
+            page.clean()
+        except Exception:
+            try:
+                # fallback: limpar controls
+                if hasattr(page, "controls"):
+                    page.controls.clear()
+            except Exception:
+                pass
+
+        # adicionar built (pode ser lista/tupla ou um único controle)
+        try:
+            if isinstance(built, (list, tuple)):
+                for c in built:
+                    page.add(c)
+            else:
+                page.add(built)
+        except Exception:
+            # tentativa alternativa: se built for Container-like, usar add diretamente
+            try:
+                page.controls.append(built)
+            except Exception:
+                pass
+
+        try:
+            page.update()
+        except Exception:
+            pass
+
+        return ctrl
+    except Exception as ex:
+        # não quebrar a aplicação; log simples
+        try:
+            print("show_control error:", ex)
+        except Exception:
+            pass
+        return None
+
 class TelaEntrada(ft.UserControl):
     def __init__(self, page, callback):
         super().__init__()
