@@ -796,21 +796,23 @@ class TelaEntrada(ft.Control):  # Substituir UserControl por Control
         # Adicionar a logo na tela inicial
         def _get_logo_src():
             try:
-                # Verificar se o arquivo da logo existe no caminho especificado
-                logo_path = Path(ASSET_LOGO)
-                if logo_path.exists():
-                    # Retornar o caminho relativo para o arquivo da logo
-                    return ASSET_LOGO
-            except Exception as ex:
-                print(f"[ERROR] Erro ao carregar a logo: {ex}")
-            # Fallback: retornar um texto indicando que a logo não foi encontrada
-            return None
+                p = Path(ASSET_LOGO)
+                if p.exists():
+                    b = p.read_bytes()
+                    mime = "image/png"
+                    # inferir por extensão simples
+                    if p.suffix.lower() in [".jpg", ".jpeg"]:
+                        mime = "image/jpeg"
+                    elif p.suffix.lower() == ".gif":
+                        mime = "image/gif"
+                    data = base64.b64encode(b).decode("ascii")
+                    return f"data:{mime};base64,{data}"
+            except Exception:
+                pass
+            # fallback: caminho direto (requer assets_dir configurado)
+            return ASSET_LOGO
 
-        logo_src = _get_logo_src()
-        if logo_src:
-            logo = ft.Image(src=logo_src, width=300, height=150, fit=ft.ImageFit.CONTAIN)
-        else:
-            logo = ft.Text("Logo não encontrada", size=16, color=colors.RED)
+        logo = ft.Image(src=_get_logo_src(), width=900, height=450, fit=ft.ImageFit.CONTAIN)
 
         btn_entrar = ft.ElevatedButton("Entrar", width=300, on_click=self.entrar)
         btn_registrar = ft.ElevatedButton("Registrar", width=300, on_click=self.registrar)
