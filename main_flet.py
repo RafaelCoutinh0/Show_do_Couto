@@ -711,6 +711,17 @@ class ShowDoMilhao:
         except Exception:
             pass
 
+# Compatibilidade: algumas versões do flet não expõem 'UserControl'.
+# Criar um substituto leve que herda de Container e fornece build() padrão.
+if not hasattr(ft, "UserControl"):
+    class _UserControl(ft.Container):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+        def build(self):
+            # Many existing classes implement build(); retornar self é suficiente para Container-based compat.
+            return self
+    ft.UserControl = _UserControl
+
 def show_control(page: ft.Page, control_callable):
     """Limpa a página e adiciona um novo controle criado por control_callable().
     control_callable deve ser uma função que retorna o controle (para evitar criar
@@ -877,7 +888,29 @@ class TelaLogin(ft.UserControl):
                     msg = str(resp)
             except Exception:
                 msg = str(resp)
-            _show_error_dialog(self.page, "Login falhou", msg)
+            # duas ações: tentar novamente (apaga senha) e ir para Registrar
+            def _tentar_novamente():
+                try:
+                    self.senha.value = ""
+                    try:
+                        self.page.update()
+                    except Exception:
+                        pass
+                except Exception:
+                    pass
+
+            def _ir_registrar():
+                try:
+                    show_control(self.page, lambda: TelaRegistro(self.page, self.callback))
+                except Exception:
+                    pass
+
+            _show_error_dialog(
+                self.page,
+                "Login falhou",
+                msg,
+                actions=[("Tentar novamente", _tentar_novamente), ("Registrar", _ir_registrar)]
+            )
 
     def on_voltar(self, e):
         try:
@@ -935,22 +968,47 @@ class TelaRegistro(ft.UserControl):
             return
         if ok:
             try:
-                _show_error_dialog(self.page, "Registro OK", "Usuário registrado com sucesso. Faça login.")
+                # ao registrar com sucesso, abrir diálogo que ao clicar em OK redireciona para tela de login
+                _show_error_dialog(
+                    self.page,
+                    "Registro OK",
+                    "Usuário registrado com sucesso. Faça login.",
+                    on_ok=lambda: show_control(self.page, lambda: TelaLogin(self.page, self.callback))
+                )
             except Exception:
                 pass
-            try:
-                show_control(self.page, lambda: TelaLogin(self.page, self.callback))
-            except Exception:
-                pass
+            # não chamar show_control imediatamente — espera OK do diálogo
         else:
-            _show_error_dialog(self.page, "Registro falhou", str(resp))
+            # em caso de falha, oferecer tentar novamente (apaga senha) e voltar para Login
+            def _tentar_novamente():
+                try:
+                    self.senha.value = ""
+                    try:
+                        self.page.update()
+                    except Exception:
+                        pass
+                except Exception:
+                    pass
+
+            def _ir_login():
+                try:
+                    show_control(self.page, lambda: TelaLogin(self.page, self.callback))
+                except Exception:
+                    pass
+
+            _show_error_dialog(
+                self.page,
+                "Registro falhou",
+                str(resp),
+                actions=[("Tentar novamente", _tentar_novamente), ("Ir para Login", _ir_login)]
+            )
 
     def on_voltar(self, e):
         try:
             show_control(self.page, lambda: TelaEntrada(self.page, self.callback))
         except Exception:
             pass
-def _show_error_dialog(page: ft.Page, title: str, message: str):
+def _show_error_dialog(page: ft.Page, title: str, message: str, on_ok=None, actions=None):
     try:
         # garantir string e evitar conteúdo completamente vazio (que às vezes causa comportamento estranho)
         msg_text = "" if message is None else str(message)
@@ -962,10 +1020,35 @@ def _show_error_dialog(page: ft.Page, title: str, message: str):
             content=ft.Text(msg_text[:1000]),
             actions=[]
         )
-        # definir ação após criar dlg (evita problemas de closure)
-        def _ok_click(e, page=page, dlg=dlg):
-            _close_dialog(page, dlg)
-        dlg.actions = [ft.TextButton("OK", on_click=_ok_click)]
+        # definir ações após criar dlg (evita problemas de closure)
+        def _make_click(cb):
+            def _click(e):
+                try:
+                    _close_dialog(page, dlg)
+                except Exception:
+                    pass
+                try:
+                    if callable(cb):
+                        cb()
+                except Exception:
+                    pass
+            return _click
+
+        if actions and isinstance(actions, (list, tuple)):
+            btns = []
+            for label, cb in actions:
+                try:
+                    btns.append(ft.TextButton(label, on_click=_make_click(cb)))
+                except Exception:
+                    pass
+            if btns:
+                dlg.actions = btns
+        elif callable(on_ok):
+            dlg.actions = [ft.TextButton("OK", on_click=_make_click(on_ok))]
+        else:
+            # comportamento padrão: apenas fechar
+            dlg.actions = [ft.TextButton("OK", on_click=_make_click(None))]
+
         # atribuir e garantir que não restem AlertDialogs antigos na overlay
         page.dialog = dlg
         try:
@@ -1110,7 +1193,6 @@ if __name__ == "__main__":
         # 💻 Modo APP (rodando no PC local)
         ft.app(
             target=main,
-            view=ft.APP,      # ✅ importante para gerar APK e rodar localmente
+            view=ft.app,      # ✅ importante para gerar APK e rodar localmente
             assets_dir="."    # ✅ necessário para carregar logo.png
         )
-
