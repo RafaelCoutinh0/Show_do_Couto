@@ -241,7 +241,14 @@ class ShowDoMilhao:
                 self.page.clean()
             except Exception:
                 pass
-            self.page.add(TelaEntrada(self.page, None))
+            # usar show_control para garantir compatibilidade entre versões do flet
+            try:
+                show_control(self.page, lambda: TelaEntrada(self.page, None))
+            except Exception:
+                try:
+                    self.page.add(TelaEntrada(self.page, None))
+                except Exception:
+                    pass
 
         botao_sair = ft.ElevatedButton(
             "Sair",
@@ -367,7 +374,13 @@ class ShowDoMilhao:
                 self.page.clean()
             except Exception:
                 pass
-            self.page.add(TelaEntrada(self.page, None))
+            try:
+                show_control(self.page, lambda: TelaEntrada(self.page, None))
+            except Exception:
+                try:
+                    self.page.add(TelaEntrada(self.page, None))
+                except Exception:
+                    pass
 
         self.botao_sair = ft.ElevatedButton("Sair", bgcolor=(colors.RED if colors is not None else None), color=(colors.WHITE if colors is not None else None), on_click=_sair_jogo)
         self.botao_desistir = ft.ElevatedButton("Desistir", on_click=self.desistir)
@@ -733,7 +746,7 @@ def show_control(page: ft.Page, control_or_factory, *args, **kwargs):
     """
     Substitui o conteúdo da página pelo controle retornado por control_or_factory.
     control_or_factory pode ser:
-      - uma callable que retorna um controle/objeto com build(), ou
+      - uma callable que retorna uma instância (UserControl ou outro), ou
       - uma instância de controle.
     Retorna a instância criada (ou None em erro).
     """
@@ -741,12 +754,26 @@ def show_control(page: ft.Page, control_or_factory, *args, **kwargs):
         # criar ou obter a instância do controle
         ctrl = control_or_factory(*args, **kwargs) if callable(control_or_factory) else control_or_factory
 
-        # se tiver método build(), usar seu retorno (compat com UserControl)
-        built = ctrl
-        if hasattr(ctrl, "build") and callable(getattr(ctrl, "build")):
-            try:
-                built = ctrl.build() or ctrl
-            except Exception:
+        # Se for uma instância de ft.UserControl (ou substituto), NÃO chamar build() manualmente:
+        # adicionar a instância e deixar o framework gerenciar o build.
+        try:
+            is_usercontrol = isinstance(ctrl, ft.UserControl)
+        except Exception:
+            # fallback: detectar pelo nome da classe
+            is_usercontrol = getattr(ctrl.__class__, "__name__", "") == "UserControl"
+
+        built = None
+        if is_usercontrol:
+            built = ctrl  # adicionar a instância diretamente
+        else:
+            # se tem build(), tentar usar o resultado; senão, usar a própria instância
+            if hasattr(ctrl, "build") and callable(getattr(ctrl, "build")):
+                try:
+                    built = ctrl.build() or ctrl
+                except Exception:
+                    # se build falhar, fallback para a própria instância
+                    built = ctrl
+            else:
                 built = ctrl
 
         # limpar a página (tenta várias estratégias)
@@ -754,7 +781,6 @@ def show_control(page: ft.Page, control_or_factory, *args, **kwargs):
             page.clean()
         except Exception:
             try:
-                # fallback: limpar controls
                 if hasattr(page, "controls"):
                     page.controls.clear()
             except Exception:
@@ -768,7 +794,6 @@ def show_control(page: ft.Page, control_or_factory, *args, **kwargs):
             else:
                 page.add(built)
         except Exception:
-            # tentativa alternativa: se built for Container-like, usar add diretamente
             try:
                 page.controls.append(built)
             except Exception:
@@ -823,7 +848,7 @@ class TelaEntrada(ft.UserControl):
         except Exception:
             pass
         try:
-            self.page.add(TelaEntrada(self.page, self.callback))
+            show_control(self.page, lambda: TelaEntrada(self.page, self.callback))
             self.page.update()
         except Exception:
             pass
@@ -844,7 +869,7 @@ class TelaEntrada(ft.UserControl):
         except Exception:
             pass
         try:
-            self.page.add(TelaEntrada(self.page, self.callback))
+            show_control(self.page, lambda: TelaEntrada(self.page, self.callback))
             self.page.update()
         except Exception:
             pass
@@ -1070,7 +1095,13 @@ def main(page: ft.Page):
                 page.clean()
             except Exception:
                 pass
-            page.add(TelaEntrada(page, iniciar_jogo))
+            try:
+                show_control(page, lambda: TelaEntrada(page, iniciar_jogo))
+            except Exception:
+                try:
+                    page.add(TelaEntrada(page, iniciar_jogo))
+                except Exception:
+                    pass
 
         try:
             # envolver toda inicialização do jogo em try/except para capturar erros
@@ -1093,22 +1124,22 @@ def main(page: ft.Page):
 
     # inicialização padrão quando a app é aberta
     try:
-        # mostra a tela de entrada e passa o callback iniciar_jogo
-        page.add(TelaEntrada(page, iniciar_jogo))
-        try:
-            page.update()
-        except Exception:
-            pass
-    except Exception:
-        try:
-            import traceback as _tb
-            tb = _tb.format_exc()
-        except Exception:
-            tb = "Erro desconhecido"
-        try:
-            _page_message(page, "Erro na inicialização. Veja console.", (colors.RED if colors is not None else None))
-        except Exception:
-            pass
+        # mostra a tela de entrada e passa o callback iniciar_jogo (usar show_control para compat)
+        show_control(page, lambda: TelaEntrada(page, iniciar_jogo))
+         try:
+             page.update()
+         except Exception:
+             pass
+     except Exception:
+         try:
+             import traceback as _tb
+             tb = _tb.format_exc()
+         except Exception:
+             tb = "Erro desconhecido"
+         try:
+             _page_message(page, "Erro na inicialização. Veja console.", (colors.RED if colors is not None else None))
+         except Exception:
+             pass
 
 
 if __name__ == "__main__":
