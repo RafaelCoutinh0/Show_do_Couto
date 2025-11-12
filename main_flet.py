@@ -952,14 +952,35 @@ class TelaRegistro(ft.UserControl):
             pass
 def _show_error_dialog(page: ft.Page, title: str, message: str):
     try:
+        # garantir string e evitar conteúdo completamente vazio (que às vezes causa comportamento estranho)
+        msg_text = "" if message is None else str(message)
+        if not msg_text.strip():
+            # colocar um espaço para evitar renderização "vazia"
+            msg_text = " "
         dlg = ft.AlertDialog(
             title=ft.Text(title),
-            content=ft.Text(str(message)[:1000]),
+            content=ft.Text(msg_text[:1000]),
             actions=[]
         )
-        # atribuir actions depois que dlg já foi criado para evitar NameError
-        dlg.actions = [ft.TextButton("OK", on_click=lambda e, dlg=dlg: _close_dialog(page, dlg))]
+        # definir ação após criar dlg (evita problemas de closure)
+        def _ok_click(e, page=page, dlg=dlg):
+            _close_dialog(page, dlg)
+        dlg.actions = [ft.TextButton("OK", on_click=_ok_click)]
+        # atribuir e garantir que não restem AlertDialogs antigos na overlay
         page.dialog = dlg
+        try:
+            # remover dialogs antigos do tipo AlertDialog (somente os que podem bloquear a UI)
+            ov = getattr(page, "overlay", [])
+            for it in list(ov):
+                try:
+                    # identificar por tipo/atributo simples para evitar remover outros overlays úteis
+                    if getattr(it, "__class__", None).__name__ == "AlertDialog":
+                        if it is not dlg:
+                            ov.remove(it)
+                except Exception:
+                    pass
+        except Exception:
+            pass
         if dlg not in page.overlay:
             page.overlay.append(dlg)
         dlg.open = True
@@ -973,19 +994,29 @@ def _show_error_dialog(page: ft.Page, title: str, message: str):
 
 def _close_dialog(page, dlg):
     try:
-        # tenta fechar e remover de forma robusta, com várias tentativas de atualização
+        # fechar dlg
         try:
             dlg.open = False
         except Exception:
             pass
+        # limpar referência principal
         try:
             if getattr(page, "dialog", None) is dlg:
                 page.dialog = None
         except Exception:
             pass
+        # remover quaisquer AlertDialogs remanescentes na overlay (incluindo o dlg)
         try:
-            if dlg in getattr(page, "overlay", []):
-                page.overlay.remove(dlg)
+            ov = getattr(page, "overlay", [])
+            for it in list(ov):
+                try:
+                    if it is dlg or getattr(it, "__class__", None).__name__ == "AlertDialog":
+                        try:
+                            ov.remove(it)
+                        except Exception:
+                            pass
+                except Exception:
+                    pass
         except Exception:
             pass
         # forçar atualização para liberar a UI imediatamente
@@ -993,7 +1024,7 @@ def _close_dialog(page, dlg):
             page.update()
         except Exception:
             pass
-        # atualização extra por segurança (algumas versões da UI podem precisar)
+        # atualização extra por segurança
         try:
             page.update()
         except Exception:
