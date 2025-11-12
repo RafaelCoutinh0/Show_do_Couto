@@ -859,15 +859,6 @@ class TelaEntrada(ft.Control):  # Substituir UserControl por Control
                 _page_message(self.page, "Erro ao abrir Registro. Veja console.", (colors.RED if colors is not None else None))
             except Exception:
                 pass
-        try:
-            self.page.clean()
-        except Exception:
-            pass
-        try:
-            show_control(self.page, lambda: TelaEntrada(self.page, self.callback))
-            self.page.update()
-        except Exception:
-            pass
 
     # Novo: entrar como convidado (sem conta)
     def entrar_sem_conta(self, e):
