@@ -793,11 +793,33 @@ class TelaEntrada(ft.Control):  # Substituir UserControl por Control
         self.callback = callback
 
     def build(self):
+        # Adicionar a logo na tela inicial
+        def _get_logo_src():
+            try:
+                p = Path(ASSET_LOGO)
+                if p.exists():
+                    b = p.read_bytes()
+                    mime = "image/png"
+                    # inferir por extensão simples
+                    if p.suffix.lower() in [".jpg", ".jpeg"]:
+                        mime = "image/jpeg"
+                    elif p.suffix.lower() == ".gif":
+                        mime = "image/gif"
+                    data = base64.b64encode(b).decode("ascii")
+                    return f"data:{mime};base64,{data}"
+            except Exception:
+                pass
+            # fallback: caminho direto (requer assets_dir configurado)
+            return ASSET_LOGO
+
+        logo = ft.Image(src=_get_logo_src(), width=300, height=150, fit=ft.ImageFit.CONTAIN)
+
         btn_entrar = ft.ElevatedButton("Entrar", width=300, on_click=self.entrar)
         btn_registrar = ft.ElevatedButton("Registrar", width=300, on_click=self.registrar)
         btn_guest = ft.TextButton("Entrar sem conta", width=300, on_click=self.entrar_sem_conta)
         col = ft.Column(
             [
+                logo,  # Adiciona a logo no topo
                 ft.Text("Bem-vindo", size=28, weight=ft.FontWeight.BOLD),
                 btn_entrar,
                 btn_registrar,
