@@ -7,7 +7,7 @@ import json
 import base64
 from pathlib import Path
 
-API_URL = "showapi-production-1dd5.up.railway.app"
+API_URL = "https://showapi-production-1dd5.up.railway.app"
 
 
 def registrar_usuario(nome, matricula, email, senha):
