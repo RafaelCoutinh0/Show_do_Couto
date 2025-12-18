@@ -7,7 +7,7 @@ import json
 import base64
 from pathlib import Path
 
-API_URL = "https://showapi-production.up.railway.app"
+API_URL = "showapi-production-1dd5.up.railway.app"
 
 
 def registrar_usuario(nome, matricula, email, senha):
@@ -1157,6 +1157,6 @@ if __name__ == "__main__":
         # 💻 Modo APP (rodando no PC local)
         ft.app(
             target=main,
-            view=ft.AppView,  # ✅ importante para gerar APK e rodar localmente
+            view=ft.WEB_BROWSER,  # ✅ importante para gerar APK e rodar localmente
             assets_dir="."    # ✅ necessário para carregar logo.png
         )
