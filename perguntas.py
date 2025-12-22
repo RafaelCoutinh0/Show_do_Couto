@@ -520,3 +520,43 @@ medio = [
         "ajuda": "Essa equação diferencial descreve o comportamento livre (sem força externa) de um sistema massa–mola–amortecedor."
     }
 ]
+
+dificil = [
+    {
+        "pergunta": "O 'atraso de transferência' (lag) em um processo industrial é resultado do efeito combinado de quais duas propriedades?",
+        "alternativas": [
+            "Inércia e Ganho",
+            "Resistência e Capacitância",
+            "Atraso de transporte e Atraso de transferência",
+            "Massa e Aceleração"
+        ],
+        "correta": 1,
+        "ajuda": "O atraso de transferência é modelado como o efeito conjunto de resistência (R) e capacitância (C)."
+    },
+    {
+        "pergunta": "Qual a principal diferença entre um modelo teórico (ou analítico) e um modelo empírico?",
+        "alternativas": [
+            "O teórico usa equações diferenciais e o empírico usa algébricas",
+            "O teórico é desenvolvido com base em princípios da Física/Química e o empírico com base em dados observados",
+            "O teórico é sempre linear e o empírico é sempre não-linear",
+            "O teórico é para sistemas mecânicos e o empírico para sistemas químicos"
+        ],
+        "correta": 1,
+        "ajuda": "Modelos teóricos usam leis fundamentais; empíricos ajustam dados observados experimentalmente."
+    }
+    ]
+
+def obter_perguntas_por_nivel(nivel, historico):
+    """
+    Retorna perguntas do nível especificado, excluindo as já respondidas.
+    Se todas as perguntas forem respondidas, retorna as mais antigas do histórico.
+    """
+    perguntas_por_nivel = {1: facil, 2: medio, 3: dificil}
+    perguntas_disponiveis = perguntas_por_nivel.get(nivel, [])
+    nao_respondidas = [p for p in perguntas_disponiveis if p not in historico]
+
+    if nao_respondidas:
+        return nao_respondidas
+    else:
+        # Retorna perguntas já respondidas, priorizando as mais antigas
+        return sorted(historico, key=lambda p: historico.index(p))

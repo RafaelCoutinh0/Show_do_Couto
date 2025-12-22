@@ -9,11 +9,13 @@ function doPost(e) {
 
     if (action === "register") {
       return handleRegister(data);
+    } else if (action === "saveProgress") {
+      return handleSaveProgress(data);
     }
 
     return jsonResponse({
       success: false,
-      message: "Invalid action for POST. Use action=register."
+      message: "Invalid action for POST. Use action=register or action=saveProgress."
     });
 
   } catch (err) {
@@ -32,11 +34,13 @@ function doGet(e) {
 
     if (action === "login") {
       return handleLogin(e.parameter);
+    } else if (action === "loadProgress") {
+      return handleLoadProgress(e.parameter);
     }
 
     return jsonResponse({
       success: false,
-      message: "Invalid action for GET. Use action=login."
+      message: "Invalid action for GET. Use action=login or action=loadProgress."
     });
 
   } catch (err) {
@@ -106,6 +110,43 @@ function handleLogin(params) {
   return jsonResponse({ success: false, message: "LOGIN_FAIL" });
 }
 
+function handleSaveProgress(data) {
+  const sheet = getProgressSheet();
+  const matricula = String(data.matricula).trim();
+  const progresso = JSON.stringify({
+    nivel: data.nivel,
+    historico: data.historico
+  });
+
+  const values = sheet.getDataRange().getValues();
+  for (let i = 1; i < values.length; i++) {
+    const row = values[i];
+    if (String(row[0]).trim() === matricula) {
+      sheet.getRange(i + 1, 2).setValue(progresso);
+      return jsonResponse({ success: true, message: "PROGRESS_SAVED" });
+    }
+  }
+
+  sheet.appendRow([matricula, progresso]);
+  return jsonResponse({ success: true, message: "PROGRESS_SAVED" });
+}
+
+function handleLoadProgress(params) {
+  const matricula = String(params.matricula).trim();
+  const sheet = getProgressSheet();
+  const values = sheet.getDataRange().getValues();
+
+  for (let i = 1; i < values.length; i++) {
+    const row = values[i];
+    if (String(row[0]).trim() === matricula) {
+      const progresso = JSON.parse(row[1]);
+      return jsonResponse({ success: true, progresso });
+    }
+  }
+
+  return jsonResponse({ success: false, message: "NO_PROGRESS_FOUND" });
+}
+
 function jsonResponse(obj) {
   return ContentService
     .createTextOutput(JSON.stringify(obj))
@@ -118,6 +159,16 @@ function getSheet() {
   if (!sheet) {
     sheet = ss.insertSheet("Usuarios");
     sheet.appendRow(["Nome", "Matricula", "Email", "Senha", "Data"]);
+  }
+  return sheet;
+}
+
+function getProgressSheet() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName("Progresso");
+  if (!sheet) {
+    sheet = ss.insertSheet("Progresso");
+    sheet.appendRow(["Matricula", "Progresso"]);
   }
   return sheet;
 }

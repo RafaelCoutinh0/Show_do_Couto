@@ -6,6 +6,7 @@ import requests
 import json
 import base64
 from pathlib import Path
+import pickle
 
 API_URL = "https://showapi-production-1dd5.up.railway.app"
 
@@ -172,7 +173,26 @@ class ShowDoMilhao:
         self.ajuda_professor_usada = False
         self.labels_regua = []
         self.botoes = []
+        self.nivel = 1
+        self.historico = []
+        self.carregar_progresso()
         self.tela_inicial()
+
+    def carregar_progresso(self):
+        """Carrega progresso do usuário (nível e histórico) de um arquivo local."""
+        try:
+            with open("progresso_usuario.pkl", "rb") as f:
+                dados = pickle.load(f)
+                self.nivel = dados.get("nivel", 1)
+                self.historico = dados.get("historico", [])
+        except FileNotFoundError:
+            self.nivel = 1
+            self.historico = []
+
+    def salvar_progresso(self):
+        """Salva progresso do usuário (nível e histórico) em um arquivo local."""
+        with open("progresso_usuario.pkl", "wb") as f:
+            pickle.dump({"nivel": self.nivel, "historico": self.historico}, f)
 
     # helpers para compatibilidade de ButtonStyle entre versões
     def _make_button_style(self):
@@ -259,8 +279,18 @@ class ShowDoMilhao:
             height=70,
             style=botao_style
         )
+
+        # Adiciona o nível atual do usuário
+        nivel_atual = ft.Text(
+            f"Nível atual: {self.nivel}",
+            size=20,
+            color=(colors.YELLOW if colors is not None else None),
+            weight=ft.FontWeight.BOLD
+        )
+
         col = ft.Column([
             logo,
+            nivel_atual,  # Exibe o nível atual
             ft.Row([botao_jogar, botao_sair], alignment=ft.MainAxisAlignment.CENTER)
         ], alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=24)
         # envolver em Container expandido para centralizar também verticalmente
@@ -285,8 +315,8 @@ class ShowDoMilhao:
             self.ajuda_professor_usada = False
             # importa perguntas dinamicamente para evitar import circular no topo
             try:
-                from perguntas import facil
-                self.perguntas_jogo = random.sample(facil, min(10, len(facil)))
+                from perguntas import obter_perguntas_por_nivel
+                self.perguntas_jogo = obter_perguntas_por_nivel(self.nivel, self.historico)
             except Exception:
                 self.perguntas_jogo = []
             self.tela_jogo()
@@ -547,8 +577,10 @@ class ShowDoMilhao:
             except Exception:
                 pass
             self.pontos += 1000
-            if (self.indice + 1) in [3, 5, 8]:
-                self.checkpoint = self.pontos
+            self.historico.append(self.pergunta_atual)
+            if self.indice >= len(self.perguntas_jogo) - 1:
+                self.avancar_nivel()
+            self.salvar_progresso()
             self.label_feedback.value = f"✅ Correto! Ganhou R$1000"
             try:
                 self.label_feedback.color = (colors.GREEN if colors is not None else None)
@@ -577,6 +609,15 @@ class ShowDoMilhao:
         import asyncio
         await asyncio.sleep(0.5)
         self.derrota()
+
+    def avancar_nivel(self):
+        """Avança para o próximo nível se houver perguntas disponíveis."""
+        if self.nivel < 3:
+            self.nivel += 1
+        else:
+            # No nível 3, permite repetir perguntas já respondidas
+            self.perguntas_jogo = self.historico
+        self.salvar_progresso()
 
     def vitoria(self):
         self.page.clean()
@@ -639,7 +680,7 @@ class ShowDoMilhao:
         except Exception:
             pass
         try:
-            # limpar eventuais AlertDialogs remanescentes na overlay (compat)
+            # limpar eventuais AlertDialog remanescentes na overlay (compat)
             ov = getattr(self.page, "overlay", [])
             for it in list(ov):
                 try:
