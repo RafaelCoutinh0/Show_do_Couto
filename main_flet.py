@@ -199,8 +199,9 @@ class ShowDoMilhao:
         sucesso, dados = carregar_progresso_api(self.matricula)
         if sucesso:
             self.nivel = dados.get("nivel", 1)
-            self.historico = dados.get("historico", [])
-            print(f"[DEBUG] Progresso carregado: nivel={self.nivel}, historico={self.historico}")
+            historico_indices = dados.get("historico", [])
+            self.historico = historico_indices  # Armazena apenas os índices no histórico
+            print(f"[DEBUG] Progresso carregado: nivel={self.nivel}, historico={historico_indices}")
         else:
             print(f"[DEBUG] Nenhum progresso encontrado para matrícula {self.matricula}. Inicializando progresso.")
             self.nivel = 1
@@ -223,134 +224,6 @@ class ShowDoMilhao:
             print(f"[ERROR] Erro ao salvar progresso: {ex}")
             traceback.print_exc()
 
-    def verificar_resposta(self, escolha):
-        """Verifica a resposta do jogador e salva progresso ao final da partida."""
-        try:
-            correta = self.pergunta_atual["nova_correta"]
-            if escolha == correta:
-                print("[DEBUG] Resposta correta.")
-                self.historico.append(self.pergunta_atual)
-                self.salvar_progresso()  # Salva progresso após cada resposta correta
-                self.indice += 1
-                self.carregar_pergunta()
-            else:
-                print("[DEBUG] Resposta incorreta.")
-                self.derrota()
-        except Exception as ex:
-            print(f"[ERROR] Erro ao verificar resposta: {ex}")
-            traceback.print_exc()
-
-    def avancar_nivel(self):
-        """Avança para o próximo nível e salva progresso."""
-        if self.nivel < 3:
-            self.nivel += 1
-        else:
-            # No nível 3, permite repetir perguntas já respondidas
-            self.perguntas_jogo = self.historico
-        print(f"[DEBUG] Avançando para o nível {self.nivel}.")
-        self.salvar_progresso()  # Salva progresso ao avançar de nível
-
-    # helpers para compatibilidade de ButtonStyle entre versões
-    def _make_button_style(self):
-        # Tentamos usar text_style (nova API). Se der TypeError, tentamos textstyle.
-        try:
-            return ft.ButtonStyle(
-                text_style=ft.TextStyle(size=28, weight=ft.FontWeight.BOLD)
-            )
-        except TypeError:
-            try:
-                return ft.ButtonStyle(
-                    textstyle=ft.TextStyle(size=28, weight=ft.FontWeight.BOLD)
-                )
-            except Exception:
-                # fallback simples
-                return None
-        except Exception:
-            return None
-
-    def tela_inicial(self):
-        try:
-            self.musica.tocar(0)
-        except Exception:
-            pass
-        self.page.clean()
-        # tenta embutir a imagem como data URI para garantir exibição
-        def _get_logo_src():
-            try:
-                p = Path(ASSET_LOGO)
-                if p.exists():
-                    b = p.read_bytes()
-                    mime = "image/png"
-                    # inferir por extensão simples
-                    if p.suffix.lower() in [".jpg", ".jpeg"]:
-                        mime = "image/jpeg"
-                    elif p.suffix.lower() == ".gif":
-                        mime = "image/gif"
-                    data = base64.b64encode(b).decode("ascii")
-                    return f"data:{mime};base64,{data}"
-            except Exception:
-                pass
-            # fallback: caminho direto (requer assets_dir configurado)
-            return ASSET_LOGO
-
-        # aumentar tamanho do logo
-        logo = ft.Image(src=_get_logo_src(), width=900, height=450, fit=ft.ImageFit.CONTAIN)
-        botao_style = self._make_button_style()
-        botao_jogar = ft.ElevatedButton(
-            "Jogar",
-            on_click=self.iniciar_jogo,
-            bgcolor=(colors.BLUE if colors is not None else None),
-            color=(colors.WHITE if colors is not None else None),
-            width=300,
-            height=70,
-            style=botao_style
-        )
-        # "Sair" deve apenas deslogar: chamar on_logout para voltar ao login/registro
-        def _sair_inicial(e):
-            try:
-                if callable(getattr(self, 'on_logout', None)):
-                    return self.on_logout()
-            except Exception:
-                pass
-            # fallback: mostrar tela de entrada (login/registro)
-            try:
-                self.page.clean()
-            except Exception:
-                pass
-            # usar show_control para garantir compatibilidade entre versões do flet
-            try:
-                show_control(self.page, lambda: TelaEntrada(self.page, None))
-            except Exception:
-                try:
-                    self.page.add(TelaEntrada(self.page, None))
-                except Exception:
-                    pass
-
-        botao_sair = ft.ElevatedButton(
-            "Sair",
-            on_click=_sair_inicial,
-            bgcolor=(colors.RED if colors is not None else None),
-            color=(colors.WHITE if colors is not None else None),
-            width=300,
-            height=70,
-            style=botao_style
-        )
-
-        # Adiciona o nível atual do usuário
-        nivel_atual = ft.Text(
-            f"Nível atual: {self.nivel}",
-            size=20,
-            color=(colors.YELLOW if colors is not None else None),
-            weight=ft.FontWeight.BOLD
-        )
-
-        col = ft.Column([
-            logo,
-            nivel_atual,  # Exibe o nível atual
-            ft.Row([botao_jogar, botao_sair], alignment=ft.MainAxisAlignment.CENTER)
-        ], alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=24)
-        # envolver em Container expandido para centralizar também verticalmente
-        self.page.add(ft.Container(content=col, alignment=ft.alignment.center, expand=True))
 
     def iniciar_jogo(self, e=None):
         """Inicia uma nova partida com no máximo 10 questões."""

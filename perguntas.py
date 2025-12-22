@@ -548,21 +548,21 @@ dificil = [
 
 def obter_perguntas_por_nivel(nivel, historico):
     """
-    Retorna até 10 perguntas do nível especificado, excluindo as já respondidas.
+    Retorna até 10 perguntas do nível especificado, excluindo as já respondidas (com base nos índices).
     Se todas as perguntas forem respondidas, retorna as mais antigas do histórico.
     """
-    print(f"[DEBUG] Obtendo perguntas para nível {nivel}. Histórico: {historico}")
+    print(f"[DEBUG] Obtendo perguntas para nível {nivel}. Histórico de índices: {historico}")
     perguntas_por_nivel = {1: facil, 2: medio, 3: dificil}
     perguntas_disponiveis = perguntas_por_nivel.get(nivel, [])
-    print(f"[DEBUG] Perguntas disponíveis no nível {nivel}: {perguntas_disponiveis}")
 
-    nao_respondidas = [p for p in perguntas_disponiveis if p not in historico]
+    # Filtra perguntas não respondidas com base nos índices
+    nao_respondidas = [p for i, p in enumerate(perguntas_disponiveis) if i not in historico]
     print(f"[DEBUG] Perguntas não respondidas: {nao_respondidas}")
 
     if nao_respondidas:
         return nao_respondidas[:10]
     else:
         # Retorna até 10 perguntas já respondidas, priorizando as mais antigas
-        repetidas = sorted(historico, key=lambda p: historico.index(p))[:10]
+        repetidas = [perguntas_disponiveis[i] for i in historico[:10] if i < len(perguntas_disponiveis)]
         print(f"[DEBUG] Retornando perguntas repetidas: {repetidas}")
         return repetidas
