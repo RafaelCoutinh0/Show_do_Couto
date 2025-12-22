@@ -353,39 +353,34 @@ class ShowDoMilhao:
         self.page.add(ft.Container(content=col, alignment=ft.alignment.center, expand=True))
 
     def iniciar_jogo(self, e=None):
-        import traceback as _tb
-        print("[DEBUG] iniciar_jogo chamado")
+        """Inicia uma nova partida com no máximo 10 questões."""
+        print("[DEBUG] Iniciando nova partida.")
         try:
-            try:
-                self.musica.tocar(1)
-            except Exception:
-                pass
-            self.pontos = 0
-            # inicia jogo: limpar página e construir a interface do jogo
-            try:
-                self.page.clean()
-            except Exception:
-                pass
-            self.ajuda_usada = False
-            self.troca_usada = False
-            self.ajuda_professor_usada = False
-            # importa perguntas dinamicamente para evitar import circular no topo
-            try:
-                from perguntas import obter_perguntas_por_nivel
-                self.perguntas_jogo = obter_perguntas_por_nivel(self.nivel, self.historico)
-            except Exception:
-                self.perguntas_jogo = []
-            self.perguntas_jogo = self.perguntas_jogo[:10]  # Garante no máximo 10 questões
-            self.tela_jogo()
-        except Exception as exc:
-            tb = _tb.format_exc()
-            print("[ERROR] Exception em iniciar_jogo:\n", tb)
-            # substituir diálogo por mensagem inline
-            try:
-                _page_message(self.page, "Erro ao iniciar jogo. Veja console.", (colors.RED if colors is not None else None))
-            except Exception:
-                pass
-            return
+            self.musica.tocar(1)
+        except Exception:
+            pass
+        self.pontos = 0
+        self.indice = 0
+        self.ajuda_usada = False
+        self.troca_usada = False
+        self.ajuda_professor_usada = False
+
+        try:
+            from perguntas import obter_perguntas_por_nivel
+            self.perguntas_jogo = obter_perguntas_por_nivel(self.nivel, self.historico)
+            print(f"[DEBUG] Perguntas carregadas: {self.perguntas_jogo}")
+        except Exception as ex:
+            print(f"[ERROR] Erro ao obter perguntas: {ex}")
+            self.perguntas_jogo = []
+
+        self.perguntas_jogo = self.perguntas_jogo[:10]  # Garante no máximo 10 questões
+        self.tela_jogo()
+        # substituir diálogo por mensagem inline
+        try:
+            _page_message(self.page, "Erro ao iniciar jogo. Veja console.", (colors.RED if colors is not None else None))
+        except Exception:
+            pass
+        return
 
     def tela_jogo(self):
         self.page.clean()
@@ -489,6 +484,12 @@ class ShowDoMilhao:
             print(f"[DEBUG] Carregando pergunta {self.indice + 1} de {len(self.perguntas_jogo)}")
             if self.indice < len(self.perguntas_jogo):
                 self.pergunta_atual = self.perguntas_jogo[self.indice]
+                print(f"[DEBUG] Pergunta atual: {self.pergunta_atual}")
+
+                # Verifica se a pergunta possui os campos necessários
+                if not all(key in self.pergunta_atual for key in ["pergunta", "alternativas", "correta"]):
+                    raise ValueError(f"Pergunta inválida: {self.pergunta_atual}")
+
                 alternativas = self.pergunta_atual["alternativas"][:]
                 correta = self.pergunta_atual["correta"]
 
