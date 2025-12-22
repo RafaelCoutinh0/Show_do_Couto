@@ -155,23 +155,29 @@ class MusicaPlayer:
 def salvar_progresso_api(matricula, nivel, historico):
     """Envia o progresso do jogador para a API."""
     try:
+        print(f"[DEBUG] Salvando progresso: matricula={matricula}, nivel={nivel}, historico={historico}")
         r = requests.post(f"{API_URL}/save_progress", json={
             "matricula": matricula,
             "nivel": nivel,
             "historico": historico
         }, timeout=10)
+        print(f"[DEBUG] Resposta da API /save_progress: {r.status_code}, {r.text}")
         return r.status_code == 200, r.json()
     except Exception as ex:
+        print(f"[ERROR] Erro ao salvar progresso: {ex}")
         return False, str(ex)
 
 def carregar_progresso_api(matricula):
     """Recupera o progresso do jogador da API."""
     try:
+        print(f"[DEBUG] Carregando progresso: matricula={matricula}")
         r = requests.get(f"{API_URL}/load_progress", params={"matricula": matricula}, timeout=10)
+        print(f"[DEBUG] Resposta da API /load_progress: {r.status_code}, {r.text}")
         if r.status_code == 200:
             return True, r.json()
         return False, r.json()
     except Exception as ex:
+        print(f"[ERROR] Erro ao carregar progresso: {ex}")
         return False, str(ex)
 
 class ShowDoMilhao:
@@ -217,8 +223,13 @@ class ShowDoMilhao:
     def salvar_progresso(self):
         """Salva progresso do jogador na API."""
         if not self.matricula:
+            print("[ERROR] Matrícula não definida. Não é possível salvar progresso.")
             return
-        salvar_progresso_api(self.matricula, self.nivel, self.historico)
+        sucesso, resposta = salvar_progresso_api(self.matricula, self.nivel, self.historico)
+        if not sucesso:
+            print(f"[ERROR] Falha ao salvar progresso na API: {resposta}")
+        else:
+            print("[DEBUG] Progresso salvo com sucesso na API.")
 
     # helpers para compatibilidade de ButtonStyle entre versões
     def _make_button_style(self):
