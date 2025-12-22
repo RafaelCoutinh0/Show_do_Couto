@@ -6,7 +6,6 @@ import requests
 import json
 import base64
 from pathlib import Path
-import pickle
 
 API_URL = "https://showapi-production-1dd5.up.railway.app"
 
@@ -211,12 +210,15 @@ class ShowDoMilhao:
     def carregar_progresso(self):
         """Carrega progresso do jogador da API."""
         if not self.matricula:
+            print("[ERROR] Matrícula não definida. Não é possível carregar progresso.")
             return
         sucesso, dados = carregar_progresso_api(self.matricula)
         if sucesso:
             self.nivel = dados.get("nivel", 1)
             self.historico = dados.get("historico", [])
+            print(f"[DEBUG] Progresso carregado: nivel={self.nivel}, historico={self.historico}")
         else:
+            print(f"[ERROR] Falha ao carregar progresso: {dados}")
             self.nivel = 1
             self.historico = []
 
@@ -226,10 +228,10 @@ class ShowDoMilhao:
             print("[ERROR] Matrícula não definida. Não é possível salvar progresso.")
             return
         sucesso, resposta = salvar_progresso_api(self.matricula, self.nivel, self.historico)
-        if not sucesso:
-            print(f"[ERROR] Falha ao salvar progresso na API: {resposta}")
-        else:
+        if sucesso:
             print("[DEBUG] Progresso salvo com sucesso na API.")
+        else:
+            print(f"[ERROR] Falha ao salvar progresso na API: {resposta}")
 
     # helpers para compatibilidade de ButtonStyle entre versões
     def _make_button_style(self):
@@ -655,6 +657,7 @@ class ShowDoMilhao:
         else:
             # No nível 3, permite repetir perguntas já respondidas
             self.perguntas_jogo = self.historico
+        print(f"[DEBUG] Avançando para o nível {self.nivel}.")
         self.salvar_progresso()  # Salva progresso ao avançar de nível
 
     def vitoria(self):
