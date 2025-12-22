@@ -551,12 +551,16 @@ def obter_perguntas_por_nivel(nivel, historico):
     Retorna até 10 perguntas do nível especificado, excluindo as já respondidas.
     Se todas as perguntas forem respondidas, retorna as mais antigas do histórico.
     """
+    print(f"[DEBUG] Obtendo perguntas para nível {nivel}. Histórico: {historico}")
     perguntas_por_nivel = {1: facil, 2: medio, 3: dificil}
     perguntas_disponiveis = perguntas_por_nivel.get(nivel, [])
     nao_respondidas = [p for p in perguntas_disponiveis if p not in historico]
 
     if nao_respondidas:
+        print(f"[DEBUG] Perguntas disponíveis (não respondidas): {nao_respondidas[:10]}")
         return nao_respondidas[:10]
     else:
         # Retorna até 10 perguntas já respondidas, priorizando as mais antigas
-        return sorted(historico, key=lambda p: historico.index(p))[:10]
+        repetidas = sorted(historico, key=lambda p: historico.index(p))[:10]
+        print(f"[DEBUG] Todas as perguntas respondidas. Retornando repetidas: {repetidas}")
+        return repetidas

@@ -212,32 +212,41 @@ class ShowDoMilhao:
         if not self.matricula:
             print("[ERROR] Matrícula não definida. Não é possível salvar progresso.")
             return
-        print(f"[DEBUG] Salvando progresso para matrícula: {self.matricula}")
-        print(f"[DEBUG] Dados enviados: nivel={self.nivel}, historico={self.historico}")
-        sucesso, resposta = salvar_progresso_api(self.matricula, self.nivel, self.historico)
-        if sucesso:
-            print("[DEBUG] Progresso salvo com sucesso na API.")
-        else:
-            print(f"[ERROR] Falha ao salvar progresso na API: {resposta}")
+        try:
+            print(f"[DEBUG] Salvando progresso: matricula={self.matricula}, nivel={self.nivel}, historico={self.historico}")
+            sucesso, resposta = salvar_progresso_api(self.matricula, self.nivel, self.historico)
+            if sucesso:
+                print("[DEBUG] Progresso salvo com sucesso na API.")
+            else:
+                print(f"[ERROR] Falha ao salvar progresso na API: {resposta}")
+        except Exception as ex:
+            print(f"[ERROR] Erro ao salvar progresso: {ex}")
+            traceback.print_exc()
 
     def verificar_resposta(self, escolha):
         """Verifica a resposta do jogador e salva progresso ao final da partida."""
-        correta = self.pergunta_atual["nova_correta"]
-        if escolha == correta:
-            print("[DEBUG] Resposta correta.")
-            self.historico.append(self.pergunta_atual)
-            if self.indice >= len(self.perguntas_jogo) - 1:
-                self.avancar_nivel()
-            self.salvar_progresso()  # Salva progresso após cada resposta correta
-        else:
-            print("[DEBUG] Resposta incorreta.")
+        try:
+            correta = self.pergunta_atual["nova_correta"]
+            if escolha == correta:
+                print("[DEBUG] Resposta correta.")
+                self.historico.append(self.pergunta_atual)
+                self.salvar_progresso()  # Salva progresso após cada resposta correta
+                self.indice += 1
+                self.carregar_pergunta()
+            else:
+                print("[DEBUG] Resposta incorreta.")
+                self.derrota()
+        except Exception as ex:
+            print(f"[ERROR] Erro ao verificar resposta: {ex}")
+            traceback.print_exc()
 
     def avancar_nivel(self):
         """Avança para o próximo nível e salva progresso."""
         if self.nivel < 3:
             self.nivel += 1
         else:
-            self.perguntas_jogo = self.historico  # No nível 3, permite repetir perguntas já respondidas
+            # No nível 3, permite repetir perguntas já respondidas
+            self.perguntas_jogo = self.historico
         print(f"[DEBUG] Avançando para o nível {self.nivel}.")
         self.salvar_progresso()  # Salva progresso ao avançar de nível
 
@@ -475,64 +484,37 @@ class ShowDoMilhao:
         return texto[:idx] + "\n" + texto[idx:].lstrip()
 
     def carregar_pergunta(self):
+        """Carrega a próxima pergunta e atualiza a interface."""
         try:
-            self.musica.tocar(1)
-        except Exception:
-            pass
-        if self.indice < len(self.perguntas_jogo):
-            self.pergunta_atual = self.perguntas_jogo[self.indice]
-            alternativas = self.pergunta_atual["alternativas"][:]
-            correta = self.pergunta_atual["correta"]
-            alternativas_com_indices = list(enumerate(alternativas))
-            random.shuffle(alternativas_com_indices)
-            alternativas_embaralhadas = [alt for idx, alt in alternativas_com_indices]
-            # novo índice da correta após embaralhar
-            nova_correta = [idx for idx, alt in alternativas_com_indices].index(correta)
-            self.pergunta_atual["alternativas_embaralhadas"] = alternativas_embaralhadas
-            self.pergunta_atual["nova_correta"] = nova_correta
-            texto1, texto2 = self.dividir_pergunta(self.pergunta_atual["pergunta"], limite=500)
-            texto_completo = texto1 + ("\n" + texto2 if texto2 else "")
-            pergunta_principal = ft.Container(
-                content=ft.Text(texto_completo, size=18, color=(colors.YELLOW if colors is not None else None), weight=ft.FontWeight.BOLD, selectable=True),
-                width=500,
-                alignment=ft.alignment.center,
-                padding=ft.padding.all(10),
-                bgcolor=None
-            )
-            self.label_pergunta = pergunta_principal
-            for i, alt in enumerate(alternativas_embaralhadas):
-                self.botoes[i].text = alt
-                self.botoes[i].disabled = False
-            self.label_feedback.value = ""
-            self.label_saldo.value = f"Saldo atual: R${self.pontos}"
-            for i, item in enumerate(self.labels_regua):
-                bolinha = item.controls[0]
-                try:
-                    bolinha.bgcolor = (colors.GREEN_700 if i < self.indice else (colors.YELLOW_300 if i == self.indice else colors.BLUE_900))
-                    bolinha.border = ft.border.all(3, (colors.YELLOW if i == self.indice else colors.WHITE))
-                    bolinha.content.color = (colors.BLACK if i == self.indice else colors.WHITE)
-                except Exception:
-                    pass
-            self.page.clean()
-            self.page.add(
-                ft.Row([
-                    ft.Column([
-                        self.label_pergunta,
-                        *self.botoes,
-                        ft.Row([self.botao_ajuda, self.botao_troca, self.botao_professor]),
-                        self.label_feedback,
-                        self.label_saldo,
-                        ft.Row([self.botao_desistir]),
-                    ], alignment=ft.MainAxisAlignment.START),
-                    ft.Column(self.labels_regua, alignment=ft.MainAxisAlignment.START, spacing=0)
-                ], alignment=ft.MainAxisAlignment.CENTER)
-            )
-            try:
+            print(f"[DEBUG] Carregando pergunta {self.indice + 1} de {len(self.perguntas_jogo)}")
+            if self.indice < len(self.perguntas_jogo):
+                self.pergunta_atual = self.perguntas_jogo[self.indice]
+                alternativas = self.pergunta_atual["alternativas"][:]
+                correta = self.pergunta_atual["correta"]
+
+                # Embaralha as alternativas
+                alternativas_com_indices = list(enumerate(alternativas))
+                random.shuffle(alternativas_com_indices)
+                alternativas_embaralhadas = [alt for idx, alt in alternativas_com_indices]
+                nova_correta = [idx for idx, alt in alternativas_com_indices].index(correta)
+
+                # Atualiza a pergunta atual com as alternativas embaralhadas
+                self.pergunta_atual["alternativas_embaralhadas"] = alternativas_embaralhadas
+                self.pergunta_atual["nova_correta"] = nova_correta
+
+                # Atualiza a interface
+                self.label_pergunta.value = self.pergunta_atual["pergunta"]
+                for i, alt in enumerate(alternativas_embaralhadas):
+                    self.botoes[i].text = alt
+                    self.botoes[i].disabled = False
+                self.label_feedback.value = ""
                 self.page.update()
-            except Exception:
-                pass
-        else:
-            self.vitoria()
+            else:
+                print("[DEBUG] Todas as perguntas foram respondidas.")
+                self.vitoria()
+        except Exception as ex:
+            print(f"[ERROR] Erro ao carregar pergunta: {ex}")
+            traceback.print_exc()
 
     def trocar_pergunta(self, e=None):
         if self.troca_usada:
@@ -657,16 +639,6 @@ class ShowDoMilhao:
         import asyncio
         await asyncio.sleep(0.5)
         self.derrota()
-
-    def avancar_nivel(self):
-        """Avança para o próximo nível e salva progresso."""
-        if self.nivel < 3:
-            self.nivel += 1
-        else:
-            # No nível 3, permite repetir perguntas já respondidas
-            self.perguntas_jogo = self.historico
-        print(f"[DEBUG] Avançando para o nível {self.nivel}.")
-        self.salvar_progresso()  # Salva progresso ao avançar de nível
 
     def vitoria(self):
         self.page.clean()
