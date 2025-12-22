@@ -880,9 +880,11 @@ class TelaLogin(ft.Control):  # Substituir UserControl por Control
             try:
                 jogo = ShowDoMilhao(self.page, on_logout=lambda: show_control(self.page, lambda: TelaEntrada(self.page, self.callback)))
                 jogo.matricula = matricula  # Define a matrícula do jogador
+                print(f"[DEBUG] Matrícula definida: {jogo.matricula}")
                 jogo.carregar_progresso()  # Carrega ou inicializa o progresso
                 return
             except Exception as ex:
+                print(f"[ERROR] Erro ao iniciar jogo: {ex}")
                 self.msg.value = "Erro ao iniciar jogo."
                 self.msg.color = (colors.RED if colors is not None else None)
                 try:
