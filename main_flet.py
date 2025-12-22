@@ -152,6 +152,28 @@ class MusicaPlayer:
 
 # Removido: antiga definição de TelaLogin que herdava ft.Column (substituída por UserControl mais acima)
 
+def salvar_progresso_api(matricula, nivel, historico):
+    """Envia o progresso do jogador para a API."""
+    try:
+        r = requests.post(f"{API_URL}/save_progress", json={
+            "matricula": matricula,
+            "nivel": nivel,
+            "historico": historico
+        }, timeout=10)
+        return r.status_code == 200, r.json()
+    except Exception as ex:
+        return False, str(ex)
+
+def carregar_progresso_api(matricula):
+    """Recupera o progresso do jogador da API."""
+    try:
+        r = requests.get(f"{API_URL}/load_progress", params={"matricula": matricula}, timeout=10)
+        if r.status_code == 200:
+            return True, r.json()
+        return False, r.json()
+    except Exception as ex:
+        return False, str(ex)
+
 class ShowDoMilhao:
     def __init__(self, page: ft.Page, on_logout=None):
         self.page = page
@@ -173,26 +195,29 @@ class ShowDoMilhao:
         self.ajuda_professor_usada = False
         self.labels_regua = []
         self.botoes = []
+        self.matricula = None  # Adicionado para identificar o jogador
         self.nivel = 1
         self.historico = []
         self.carregar_progresso()
         self.tela_inicial()
 
     def carregar_progresso(self):
-        """Carrega progresso do usuário (nível e histórico) de um arquivo local."""
-        try:
-            with open("progresso_usuario.pkl", "rb") as f:
-                dados = pickle.load(f)
-                self.nivel = dados.get("nivel", 1)
-                self.historico = dados.get("historico", [])
-        except FileNotFoundError:
+        """Carrega progresso do jogador da API."""
+        if not self.matricula:
+            return
+        sucesso, dados = carregar_progresso_api(self.matricula)
+        if sucesso:
+            self.nivel = dados.get("nivel", 1)
+            self.historico = dados.get("historico", [])
+        else:
             self.nivel = 1
             self.historico = []
 
     def salvar_progresso(self):
-        """Salva progresso do usuário (nível e histórico) em um arquivo local."""
-        with open("progresso_usuario.pkl", "wb") as f:
-            pickle.dump({"nivel": self.nivel, "historico": self.historico}, f)
+        """Salva progresso do jogador na API."""
+        if not self.matricula:
+            return
+        salvar_progresso_api(self.matricula, self.nivel, self.historico)
 
     # helpers para compatibilidade de ButtonStyle entre versões
     def _make_button_style(self):
@@ -578,6 +603,7 @@ class ShowDoMilhao:
                 pass
             self.pontos += 1000
             self.historico.append(self.pergunta_atual)
+            self.salvar_progresso()
             if self.indice >= len(self.perguntas_jogo) - 1:
                 self.avancar_nivel()
             self.salvar_progresso()

@@ -548,7 +548,7 @@ dificil = [
 
 def obter_perguntas_por_nivel(nivel, historico):
     """
-    Retorna perguntas do nível especificado, excluindo as já respondidas.
+    Retorna até 10 perguntas do nível especificado, excluindo as já respondidas.
     Se todas as perguntas forem respondidas, retorna as mais antigas do histórico.
     """
     perguntas_por_nivel = {1: facil, 2: medio, 3: dificil}
@@ -556,7 +556,7 @@ def obter_perguntas_por_nivel(nivel, historico):
     nao_respondidas = [p for p in perguntas_disponiveis if p not in historico]
 
     if nao_respondidas:
-        return nao_respondidas
+        return nao_respondidas[:10]
     else:
-        # Retorna perguntas já respondidas, priorizando as mais antigas
-        return sorted(historico, key=lambda p: historico.index(p))
+        # Retorna até 10 perguntas já respondidas, priorizando as mais antigas
+        return sorted(historico, key=lambda p: historico.index(p))[:10]
