@@ -200,8 +200,10 @@ class ShowDoMilhao:
         if sucesso:
             self.nivel = dados.get("nivel", 1)
             historico_indices = dados.get("historico", [])
-            self.historico = historico_indices  # Armazena apenas os índices no histórico
-            print(f"[DEBUG] Progresso carregado: nivel={self.nivel}, historico={historico_indices}")
+            if not isinstance(historico_indices, list):
+                historico_indices = []
+            self.historico = [i for i in historico_indices if isinstance(i, int)]
+            print(f"[DEBUG] Progresso carregado: nivel={self.nivel}, historico={self.historico}")
         else:
             print(f"[DEBUG] Nenhum progresso encontrado para matrícula {self.matricula}. Inicializando progresso.")
             self.nivel = 1
