@@ -240,11 +240,21 @@ class ShowDoMilhao:
 
         try:
             from perguntas import obter_perguntas_por_nivel
+            # Garante que o histórico seja uma lista de índices válidos
+            if not isinstance(self.historico, list):
+                self.historico = []
             self.perguntas_jogo = obter_perguntas_por_nivel(self.nivel, self.historico)
             print(f"[DEBUG] Perguntas carregadas: {self.perguntas_jogo}")
         except Exception as ex:
             print(f"[ERROR] Erro ao obter perguntas: {ex}")
+            traceback.print_exc()
             self.perguntas_jogo = []
+
+        if not self.perguntas_jogo:
+            print("[ERROR] Nenhuma pergunta disponível para iniciar o jogo.")
+            self.page.add(ft.Text("Erro: Nenhuma pergunta disponível para iniciar o jogo.", color=ft.colors.RED))
+            self.page.update()
+            return
 
         self.perguntas_jogo = self.perguntas_jogo[:10]  # Garante no máximo 10 questões
         self.tela_jogo()

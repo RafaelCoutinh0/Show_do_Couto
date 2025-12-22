@@ -555,6 +555,15 @@ def obter_perguntas_por_nivel(nivel, historico):
     perguntas_por_nivel = {1: facil, 2: medio, 3: dificil}
     perguntas_disponiveis = perguntas_por_nivel.get(nivel, [])
 
+    if not perguntas_disponiveis:
+        print("[ERROR] Nenhuma pergunta disponível para o nível especificado.")
+        return []
+
+    # Garante que o histórico seja uma lista de índices válidos
+    if not isinstance(historico, list):
+        historico = []
+    historico = [i for i in historico if isinstance(i, int) and 0 <= i < len(perguntas_disponiveis)]
+
     # Filtra perguntas não respondidas com base nos índices
     nao_respondidas = [p for i, p in enumerate(perguntas_disponiveis) if i not in historico]
     print(f"[DEBUG] Perguntas não respondidas: {nao_respondidas}")
