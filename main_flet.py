@@ -189,6 +189,8 @@ class ShowDoMilhao:
         self.nivel = 1
         self.historico = []
         self.perguntas_jogo = []
+        self.checkpoint = 0  # Inicializa o checkpoint com 0
+        self.questoes_certas_partida = []  # Lista temporária para questões corretas na partida
         self.tela_inicial()
 
     def carregar_progresso(self):
@@ -201,10 +203,11 @@ class ShowDoMilhao:
         if sucesso:
             self.nivel = dados.get("nivel", 1)
             historico_indices = dados.get("historico", [])
+            print(f"[DEBUG] Dados recebidos da API: nivel={self.nivel}, historico={historico_indices}")
             if not isinstance(historico_indices, list):
                 historico_indices = []
             self.historico = [i for i in historico_indices if isinstance(i, int)]
-            print(f"[DEBUG] Progresso carregado: nivel={self.nivel}, historico={self.historico}")
+            print(f"[DEBUG] Histórico processado: {self.historico}")
         else:
             print(f"[DEBUG] Nenhum progresso encontrado para matrícula {self.matricula}. Inicializando progresso.")
             self.nivel = 1
@@ -216,45 +219,104 @@ class ShowDoMilhao:
         if not self.matricula:
             print("[ERROR] Matrícula não definida. Não é possível salvar progresso.")
             return
+
+        # ===== 1️⃣ Atualiza histórico com acertos da partida =====
+        self.historico.extend(
+            q for q in self.questoes_certas_partida
+            if isinstance(q, int) and q not in self.historico
+        )
+        self.historico = sorted(set(self.historico))
+        print(f"[DEBUG] Histórico atualizado com questões corretas da partida: {self.historico}")
+
+        # ===== 2️⃣ Verifica se o nível foi COMPLETADO =====
         try:
-            # Garante que o histórico seja uma lista de índices válidos
-            historico_indices = [self.perguntas_jogo.index(p) for p in self.historico if p in self.perguntas_jogo]
+            from perguntas import facil, medio, dificil
+
+            total_por_nivel = {
+                1: len(facil),
+                2: len(medio),
+                3: len(dificil)
+            }
+
+            total_necessario = total_por_nivel.get(self.nivel, 0)
+            total_respondidas = len(self.historico)
+            print(f"[DEBUG] Progresso parcial: {total_respondidas}/{total_necessario} questões respondidas.")
+            if total_necessario > 0 and total_respondidas >= total_necessario:
+                if self.nivel < 3:
+                    print(f"[DEBUG] Nível {self.nivel} completo. Subindo para nível {self.nivel + 1}")
+                    self.nivel += 1
+                    self.historico = []  # Limpa o histórico ao subir de nível
+                else:
+                    print("[DEBUG] Nível máximo já concluído.")
+            else:
+                print(f"[DEBUG] Progresso parcial: {total_respondidas}/{total_necessario} questões respondidas.")
+        except Exception as ex:
+            print(f"[ERROR] Erro ao verificar conclusão do nível: {ex}")
+            traceback.print_exc()
+
+        # ===== 3️⃣ Salva progresso FINAL na API =====
+        try:
             progresso = {
                 "matricula": self.matricula,
                 "nivel": self.nivel,
-                "historico": historico_indices
+                "historico": self.historico
             }
             print(f"[DEBUG] Salvando progresso: {progresso}")
-            sucesso, resposta = salvar_progresso_api(progresso["matricula"], progresso["nivel"], progresso["historico"])
+
+            sucesso, resposta = salvar_progresso_api(
+                progresso["matricula"],
+                progresso["nivel"],
+                progresso["historico"]
+            )
+
             if sucesso:
                 print("[DEBUG] Progresso salvo com sucesso na API.")
             else:
                 print(f"[ERROR] Falha ao salvar progresso na API: {resposta}")
+
         except Exception as ex:
             print(f"[ERROR] Erro ao salvar progresso: {ex}")
             traceback.print_exc()
 
-
     def iniciar_jogo(self, e=None):
         """Inicia uma nova partida com no máximo 10 questões."""
         print("[DEBUG] Iniciando nova partida.")
+
+        # 🔥 GARANTIA: histórico correto ANTES de pegar perguntas
+        if self.matricula:
+            self.carregar_progresso()
+
         try:
             self.musica.tocar(1)
         except Exception:
             pass
+
+        # Reset de estado da partida
         self.pontos = 0
         self.indice = 0
         self.ajuda_usada = False
         self.troca_usada = False
         self.ajuda_professor_usada = False
+        self.questoes_certas_partida = []
 
         try:
             from perguntas import obter_perguntas_por_nivel
-            # Garante que o histórico seja uma lista de índices válidos
+
+            # Sanitize histórico
             if not isinstance(self.historico, list):
                 self.historico = []
-            self.perguntas_jogo = obter_perguntas_por_nivel(self.nivel, self.historico)
-            print(f"[DEBUG] Perguntas carregadas: {self.perguntas_jogo}")
+            self.historico = sorted(set(self.historico))
+
+            print(f"[DEBUG] Histórico validado antes de carregar perguntas: {self.historico}")
+
+            # 🔥 Agora sim o histórico está correto
+            self.perguntas_jogo = obter_perguntas_por_nivel(
+                self.nivel,
+                self.historico
+            )
+
+            print(f"[DEBUG] Perguntas carregadas: {len(self.perguntas_jogo)} disponíveis.")
+
         except Exception as ex:
             print(f"[ERROR] Erro ao obter perguntas: {ex}")
             traceback.print_exc()
@@ -262,20 +324,221 @@ class ShowDoMilhao:
 
         if not self.perguntas_jogo:
             print("[ERROR] Nenhuma pergunta disponível para iniciar o jogo.")
-            self.page.add(ft.Text("Erro: Nenhuma pergunta disponível para iniciar o jogo.", color=ft.colors.RED))
+            self.page.add(
+                ft.Text(
+                    "Erro: Nenhuma pergunta disponível para iniciar o jogo.",
+                    color=ft.colors.RED
+                )
+            )
             self.page.update()
             return
 
-        self.perguntas_jogo = self.perguntas_jogo[:10]  # Garante no máximo 10 questões
+        # Garante no máximo 10 questões
+        self.perguntas_jogo = self.perguntas_jogo[:10]
+
         self.tela_jogo()
-        # substituir diálogo por mensagem inline
+
+    def verificar_resposta(self, escolha):
+        """Verifica a resposta do jogador e salva progresso."""
+        for botao in self.botoes:
+            botao.disabled = True
+        correta = self.pergunta_atual["nova_correta"]
+        pergunta_index_global = self.pergunta_atual["indice_global"]  # Índice global da pergunta
+
+        if escolha == correta:
+            try:
+                self.musica.tocar(2)
+            except Exception:
+                pass
+            self.pontos += 1000
+            self.label_feedback.value = "✅ Resposta correta!"
+            self.label_feedback.color = (colors.GREEN if colors is not None else None)
+
+            # Adiciona o índice global da pergunta à lista temporária
+            if pergunta_index_global not in self.questoes_certas_partida:
+                self.questoes_certas_partida.append(pergunta_index_global)
+                print(f"[DEBUG] Questão correta adicionada à lista temporária: {pergunta_index_global}")
+        else:
+            self.label_feedback.value = "❌ Resposta errada!"
+            self.label_feedback.color = (colors.RED if colors is not None else None)
+            self.page.update()
+            print(f"[DEBUG] Resposta errada. Encerrando o jogo.")
+            self.derrota()  # Chama diretamente o método de derrota
+            return
+
+        self.indice += 1
+
+        if self.indice >= len(self.perguntas_jogo):
+            self.page.run_task(self._delay_vitoria)
+        else:
+            self.page.run_task(self._delay_carregar_pergunta)
+
         try:
-            _page_message(self.page, "Erro ao iniciar jogo. Veja console.", (colors.RED if colors is not None else None))
+            self.page.update()
         except Exception:
             pass
-        return
+
+    def vitoria(self):
+        """Exibe a mensagem de vitória e retorna à tela inicial."""
+        print(f"[DEBUG] Questões corretas nesta partida: {self.questoes_certas_partida}")  # Debug da lista temporária
+        self.salvar_progresso()  # Salva progresso antes de retornar
+        self.page.clean()
+        try:
+            self.musica.tocar(4)
+        except Exception:
+            pass
+        msg = ft.Text(
+            f"🎉 Parabéns, você ganhou!\nSaiu com R$ {self.pontos}",
+            size=24,
+            color=(colors.YELLOW if colors is not None else None),
+            weight=ft.FontWeight.BOLD,
+            text_align=ft.TextAlign.CENTER
+        )
+        botao_voltar = ft.ElevatedButton(
+            "Voltar ao início",
+            bgcolor=(colors.BLUE if colors is not None else None),
+            color=(colors.WHITE if colors is not None else None),
+            on_click=lambda _: self._salvar_e_voltar()
+        )
+        self.page.add(
+            ft.Container(
+                content=ft.Column([msg, botao_voltar], alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER),
+                alignment=ft.alignment.center,
+                expand=True
+            )
+        )
+
+    def derrota(self):
+        """Exibe a mensagem de derrota e retorna à tela inicial."""
+        print(f"[DEBUG] Questões corretas nesta partida: {self.questoes_certas_partida}")  # Debug da lista temporária
+        self.salvar_progresso()  # Salva progresso antes de retornar
+        self.page.clean()
+        try:
+            self.musica.tocar(3)
+        except Exception:
+            pass
+        msg = ft.Text(
+            f"❌ Você perdeu!\nSaiu com R$ {self.checkpoint}",
+            size=24,
+            color=(colors.RED if colors is not None else None),
+            weight=ft.FontWeight.BOLD,
+            text_align=ft.TextAlign.CENTER
+        )
+        botao_voltar = ft.ElevatedButton(
+            "Voltar ao início",
+            bgcolor=(colors.BLUE if colors is not None else None),
+            color=(colors.WHITE if colors is not None else None),
+            on_click=lambda _: self._salvar_e_voltar()
+        )
+        self.page.add(
+            ft.Container(
+                content=ft.Column([msg, botao_voltar], alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER),
+                alignment=ft.alignment.center,
+                expand=True
+            )
+        )
+
+    def desistir(self, e=None):
+        """Processa a desistência e retorna à tela inicial."""
+        print(f"[DEBUG] Questões corretas nesta partida: {self.questoes_certas_partida}")  # Debug da lista temporária
+        self.salvar_progresso()  # Salva progresso antes de retornar
+        self.page.clean()
+        msg = ft.Text(
+            f"💰 Você desistiu!\nSaiu com R$ {self.pontos}",
+            size=24,
+            color=(colors.ORANGE if colors is not None else None),
+            weight=ft.FontWeight.BOLD,
+            text_align=ft.TextAlign.CENTER
+        )
+        botao_voltar = ft.ElevatedButton(
+            "Voltar ao início",
+            bgcolor=(colors.BLUE if colors is not None else None),
+            color=(colors.WHITE if colors is not None else None),
+            on_click=lambda _: self._salvar_e_voltar()
+        )
+        self.page.add(
+            ft.Container(
+                content=ft.Column([msg, botao_voltar], alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER),
+                alignment=ft.alignment.center,
+                expand=True
+            )
+        )
+
+    def _salvar_e_voltar(self):
+        """Salva o progresso e retorna à tela inicial."""
+        self.salvar_progresso()
+        self.tela_inicial()
+
+    def tela_inicial(self):
+        """Exibe a tela inicial do jogo."""
+        self.page.clean()
+        try:
+            self.musica.tocar(0)
+        except Exception:
+            pass
+
+        # Adiciona o logo na tela inicial
+        def _get_logo_src():
+            try:
+                p = Path(ASSET_LOGO)
+                if p.exists():
+                    b = p.read_bytes()
+                    mime = "image/png"
+                    # Inferir por extensão simples
+                    if p.suffix.lower() in [".jpg", ".jpeg"]:
+                        mime = "image/jpeg"
+                    elif p.suffix.lower() == ".gif":
+                        mime = "image/gif"
+                    data = base64.b64encode(b).decode("ascii")
+                    return f"data:{mime};base64,{data}"
+            except Exception:
+                pass
+            # Fallback: caminho direto (requer assets_dir configurado)
+            return ASSET_LOGO
+
+        logo = ft.Image(src=_get_logo_src(), width=900, height=450, fit=ft.ImageFit.CONTAIN)
+
+        # Exibe o nível atual do jogador
+        nivel_atual = ft.Text(
+            f"Nível atual: {self.nivel}",
+            size=20,
+            color=(colors.YELLOW if colors is not None else None),
+            weight=ft.FontWeight.BOLD
+        )
+
+        # Botões da tela inicial
+        botao_jogar = ft.ElevatedButton(
+            "Jogar",
+            on_click=self.iniciar_jogo,
+            bgcolor=(colors.BLUE if colors is not None else None),
+            color=(colors.WHITE if colors is not None else None),
+            width=300,
+            height=70
+        )
+        botao_sair = ft.ElevatedButton(
+            "Sair",
+            on_click=self.on_logout,
+            bgcolor=(colors.RED if colors is not None else None),
+            color=(colors.WHITE if colors is not None else None),
+            width=300,
+            height=70
+        )
+
+        # Layout da tela inicial
+        col = ft.Column(
+            [
+                logo,
+                nivel_atual,  # Adiciona o nível atual do jogador
+                ft.Row([botao_jogar, botao_sair], alignment=ft.MainAxisAlignment.CENTER)
+            ],
+            alignment=ft.MainAxisAlignment.CENTER,
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            spacing=24
+        )
+        self.page.add(ft.Container(content=col, alignment=ft.alignment.center, expand=True))
 
     def tela_jogo(self):
+        """Exibe a tela do jogo com a pergunta atual e opções de resposta."""
         self.page.clean()
         self.labels_regua = []
         regua = []
@@ -354,63 +617,100 @@ class ShowDoMilhao:
         )
         self.carregar_pergunta()
 
-    # helpers de texto para dividir questão/ajuda
-    def dividir_pergunta(self, texto, limite=90):
-        if len(texto) <= limite:
-            return texto, ""
-        idx = texto.rfind(" ", 0, limite)
-        if idx == -1:
-            idx = limite
-        return texto[:idx], texto[idx:].lstrip()
-
-    def dividir_ajuda(self, texto, limite=60):
-        if len(texto) <= limite:
-            return texto
-        idx = texto.rfind(" ", 0, limite)
-        if idx == -1:
-            idx = limite
-        return texto[:idx] + "\n" + texto[idx:].lstrip()
-
     def carregar_pergunta(self):
-        """Carrega a próxima pergunta e atualiza a interface."""
+        """Carrega e exibe a pergunta atual na interface."""
+        if self.indice < len(self.perguntas_jogo):
+            self.pergunta_atual = self.perguntas_jogo[self.indice]
+            alternativas = self.pergunta_atual["alternativas"]
+            correta = self.pergunta_atual["correta"]
+
+            # Embaralha as alternativas
+            alternativas_com_indices = list(enumerate(alternativas))
+            random.shuffle(alternativas_com_indices)
+            alternativas_embaralhadas = [alt for _, alt in alternativas_com_indices]
+            nova_correta = [idx for idx, _ in alternativas_com_indices].index(correta)
+
+            self.pergunta_atual["alternativas_embaralhadas"] = alternativas_embaralhadas
+            self.pergunta_atual["nova_correta"] = nova_correta
+
+            # Atualiza a pergunta e as alternativas na interface
+            self.label_pergunta.value = self.pergunta_atual["pergunta"]
+            for i, alt in enumerate(alternativas_embaralhadas):
+                self.botoes[i].text = alt
+                self.botoes[i].disabled = False
+
+            self.label_feedback.value = ""
+            self.label_saldo.value = f"Saldo atual: R${self.pontos}"
+
+            # Atualiza a régua de progresso
+            for i, item in enumerate(self.labels_regua):
+                bolinha = item.controls[0]
+                bolinha.bgcolor = (
+                    colors.GREEN_700 if i < self.indice else
+                    (colors.YELLOW_300 if i == self.indice else colors.BLUE_900)
+                )
+                bolinha.border = ft.border.all(3, (colors.YELLOW if i == self.indice else colors.WHITE))
+                bolinha.content.color = (colors.BLACK if i == self.indice else colors.WHITE)
+
+            self.page.update()
+        else:
+            self.vitoria()
+
+    def ajuda_dado(self, e=None):
+        """Elimina algumas alternativas incorretas como ajuda."""
+        if self.ajuda_usada:
+            return
+        self.ajuda_usada = True
         try:
-            print(f"[DEBUG] Carregando pergunta {self.indice + 1} de {len(self.perguntas_jogo)}")
-            if self.indice < len(self.perguntas_jogo):
-                self.pergunta_atual = self.perguntas_jogo[self.indice]
-                print(f"[DEBUG] Pergunta atual: {self.pergunta_atual}")
+            self.botao_ajuda.visible = False
+            self.page.update()
+        except Exception:
+            pass
 
-                # Verifica se a pergunta possui os campos necessários
-                if not all(key in self.pergunta_atual for key in ["pergunta", "alternativas", "correta"]):
-                    raise ValueError(f"Pergunta inválida: {self.pergunta_atual}")
+        correta = self.pergunta_atual["nova_correta"]
+        alternativas_restantes = [i for i in range(4) if i != correta and not self.botoes[i].disabled]
+        qtd_eliminar = min(random.randint(1, 3), len(alternativas_restantes))
+        eliminar = random.sample(alternativas_restantes, qtd_eliminar)
 
-                alternativas = self.pergunta_atual["alternativas"][:]
-                correta = self.pergunta_atual["correta"]
+        for i in eliminar:
+            self.botoes[i].disabled = True
+            self.botoes[i].text = " "
 
-                # Embaralha as alternativas
-                alternativas_com_indices = list(enumerate(alternativas))
-                random.shuffle(alternativas_com_indices)
-                alternativas_embaralhadas = [alt for idx, alt in alternativas_com_indices]
-                nova_correta = [idx for idx, alt in alternativas_com_indices].index(correta)
+        self.label_feedback.value = f"🎲 Dado rolado: {qtd_eliminar} alternativas eliminadas."
+        try:
+            self.label_feedback.color = (colors.PURPLE if colors is not None else None)
+        except Exception:
+            pass
+        try:
+            self.page.update()
+        except Exception:
+            pass
 
-                # Atualiza a pergunta atual com as alternativas embaralhadas
-                self.pergunta_atual["alternativas_embaralhadas"] = alternativas_embaralhadas
-                self.pergunta_atual["nova_correta"] = nova_correta
+    def ajuda_professor(self, e=None):
+        """Fornece uma dica baseada na ajuda da pergunta atual."""
+        if self.ajuda_professor_usada:
+            return
+        self.ajuda_professor_usada = True
+        try:
+            self.botao_professor.visible = False
+            self.page.update()
+        except Exception:
+            pass
 
-                # Atualiza a interface
-                self.label_pergunta.value = self.pergunta_atual["pergunta"]
-                for i, alt in enumerate(alternativas_embaralhadas):
-                    self.botoes[i].text = alt
-                    self.botoes[i].disabled = False
-                self.label_feedback.value = ""
-                self.page.update()
-            else:
-                print("[DEBUG] Todas as perguntas foram respondidas.")
-                self.vitoria()
-        except Exception as ex:
-            print(f"[ERROR] Erro ao carregar pergunta: {ex}")
-            traceback.print_exc()
+        texto_ajuda = self.pergunta_atual.get("ajuda", "👨‍🏫 Os professores sugerem que você pense bem antes de responder!")
+        texto_ajuda = self.dividir_ajuda(texto_ajuda, limite=38)
+        self.label_feedback.value = f"👨‍🏫 Ajuda dos Professores: {texto_ajuda}"
+        try:
+            self.label_feedback.color = (colors.RED if colors is not None else None)
+        except Exception:
+            pass
+        try:
+            self.page.update()
+        except Exception:
+            pass
 
     def trocar_pergunta(self, e=None):
+        """Troca a pergunta atual por outra disponível."""
         if self.troca_usada:
             return
         self.troca_usada = True
@@ -419,11 +719,13 @@ class ShowDoMilhao:
             self.page.update()
         except Exception:
             pass
+
         try:
             from perguntas import facil
             perguntas_possiveis = [p for p in facil if p not in self.perguntas_jogo]
         except Exception:
             perguntas_possiveis = []
+
         if perguntas_possiveis:
             nova_pergunta = random.choice(perguntas_possiveis)
             self.perguntas_jogo[self.indice] = nova_pergunta
@@ -444,196 +746,17 @@ class ShowDoMilhao:
         except Exception:
             pass
 
-    def ajuda_dado(self, e=None):
-        if self.ajuda_usada:
-            return
-        self.ajuda_usada = True
-        try:
-            self.botao_ajuda.visible = False
-            self.page.update()
-        except Exception:
-            pass
-        correta = self.pergunta_atual["nova_correta"]
-        alternativas_restantes = [i for i in range(4) if i != correta and not self.botoes[i].disabled]
-        qtd_eliminar = min(random.randint(1, 3), len(alternativas_restantes))
-        eliminar = random.sample(alternativas_restantes, qtd_eliminar)
-        for i in eliminar:
-            self.botoes[i].disabled = True
-            self.botoes[i].text = " "
-        self.label_feedback.value = f"🎲 Dado rolado: {qtd_eliminar} alternativas eliminadas."
-        try:
-            self.label_feedback.color = (colors.PURPLE if colors is not None else None)
-        except Exception:
-            pass
-        try:
-            self.page.update()
-        except Exception:
-            pass
-
-    def ajuda_professor(self, e=None):
-        if self.ajuda_professor_usada:
-            return
-        self.ajuda_professor_usada = True
-        try:
-            self.botao_professor.visible = False
-            self.page.update()
-        except Exception:
-            pass
-        texto_ajuda = self.pergunta_atual.get("ajuda", "👨‍🏫 Os professores sugerem que você pense bem antes de responder!")
-        texto_ajuda = self.dividir_ajuda(texto_ajuda, limite=38)
-        self.label_feedback.value = f"👨‍🏫 Ajuda dos Professores: {texto_ajuda}"
-        try:
-            self.label_feedback.color = (colors.RED if colors is not None else None)
-        except Exception:
-            pass
-        try:
-            self.page.update()
-        except Exception:
-            pass
-
-    def verificar_resposta(self, escolha):
-        for botao in self.botoes:
-            botao.disabled = True
-        correta = self.pergunta_atual["nova_correta"]
-        if escolha == correta:
-            try:
-                self.musica.tocar(2)
-            except Exception:
-                pass
-            self.pontos += 1000
-            self.historico.append(self.pergunta_atual)
-            if self.indice >= len(self.perguntas_jogo) - 1:
-                self.avancar_nivel()
-            self.salvar_progresso()  # Salva progresso após cada resposta correta
-            self.label_feedback.value = f"✅ Correto! Ganhou R$1000"
-            try:
-                self.label_feedback.color = (colors.GREEN if colors is not None else None)
-            except Exception:
-                pass
-            self.label_saldo.value = f"Saldo atual: R${self.pontos}"
-            self.indice += 1
-            try:
-                self.page.update()
-            except Exception:
-                pass
-            self.page.run_task(self._delay_carregar_pergunta)
-        else:
-            self.page.run_task(self._delay_derrota)
-        try:
-            self.page.update()
-        except Exception:
-            pass
-
     async def _delay_carregar_pergunta(self):
+        """Aguarda um pequeno atraso antes de carregar a próxima pergunta."""
         import asyncio
-        await asyncio.sleep(1.5)
+        await asyncio.sleep(0.001)
         self.carregar_pergunta()
 
     async def _delay_derrota(self):
+        """Aguarda um pequeno atraso antes de exibir a tela de derrota."""
         import asyncio
-        await asyncio.sleep(0.5)
+        await asyncio.sleep(0.001)
         self.derrota()
-
-    def vitoria(self):
-        self.page.clean()
-        try:
-            self.musica.tocar(4)
-        except Exception:
-            pass
-        msg = ft.Text(
-            f"🎉 Parabéns, você ganhou!\nSaiu com R${self.pontos}",
-            size=24,
-            color=(colors.YELLOW if colors is not None else None),
-            weight=ft.FontWeight.BOLD,
-            text_align=ft.TextAlign.CENTER
-        )
-        botao_voltar = ft.ElevatedButton(
-            "Voltar ao início",
-            bgcolor=(colors.BLUE if colors is not None else None),
-            color=(colors.WHITE if colors is not None else None),
-            on_click=lambda _: self.tela_inicial()
-        )
-        self.page.add(
-            ft.Container(
-                content=ft.Column([msg, botao_voltar], alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER),
-                alignment=ft.alignment.center,
-                expand=True
-            )
-        )
-
-    def derrota(self):
-        self.page.clean()
-        try:
-            self.musica.tocar(3)
-        except Exception:
-            pass
-        msg = ft.Text(
-            f"❌ Você perdeu!\nSaiu com R${self.checkpoint}",
-            size=24,
-            color=(colors.RED if colors is not None else None),
-            weight=ft.FontWeight.BOLD,
-            text_align=ft.TextAlign.CENTER
-        )
-        botao_voltar = ft.ElevatedButton(
-            "Voltar ao início",
-            bgcolor=(colors.BLUE if colors is not None else None),
-            color=(colors.WHITE if colors is not None else None),
-            on_click=lambda _: self.tela_inicial()
-        )
-        self.page.add(
-            ft.Container(
-                content=ft.Column([msg, botao_voltar], alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER),
-                alignment=ft.alignment.center,
-                expand=True
-            )
-        )
-
-    def desistir(self, e=None):
-        # Sem diálogos: processa desistência imediatamente
-        try:
-            self.page.dialog = None
-        except Exception:
-            pass
-        try:
-            # limpar eventuais AlertDialog remanescentes na overlay (compat)
-            ov = getattr(self.page, "overlay", [])
-            for it in list(ov):
-                try:
-                    if getattr(it, "__class__", None).__name__ == "AlertDialog":
-                        try:
-                            ov.remove(it)
-                        except Exception:
-                            pass
-                except Exception:
-                    pass
-        except Exception:
-            pass
-
-        # ação de desistir (mesma lógica do "Sim" anterior)
-        try:
-            self.page.clean()
-        except Exception:
-            pass
-        msg = ft.Text(
-            f"💰 Você desistiu!\nSaiu com R${self.pontos}",
-            size=24,
-            color=(colors.ORANGE if colors is not None else None),
-            weight=ft.FontWeight.BOLD,
-            text_align=ft.TextAlign.CENTER
-        )
-        botao_voltar = ft.ElevatedButton(
-            "Voltar ao início",
-            bgcolor=(colors.BLUE if colors is not None else None),
-            color=(colors.WHITE if colors is not None else None),
-            on_click=lambda _: self.tela_inicial()
-        )
-        self.page.add(
-            ft.Container(
-                content=ft.Column([msg, botao_voltar], alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER),
-                alignment=ft.alignment.center,
-                expand=True
-            )
-        )
 
 # Compatibilidade: substituir UserControl por Control
 if not hasattr(ft, "Control"):
@@ -886,7 +1009,7 @@ class TelaLogin(ft.Control):  # Substituir UserControl por Control
             return
         if ok:
             try:
-                jogo = ShowDoMilhao(self.page, on_logout=lambda: show_control(self.page, lambda: TelaEntrada(self.page, self.callback)))
+                jogo = ShowDoMilhao(self.page, on_logout=lambda e: show_control(self.page, lambda: TelaEntrada(self.page, self.callback)))
                 jogo.matricula = matricula  # Define a matrícula do jogador
                 print(f"[DEBUG] Matrícula definida: {jogo.matricula}")
                 jogo.carregar_progresso()  # Carrega ou inicializa o progresso

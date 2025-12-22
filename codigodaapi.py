@@ -2,6 +2,7 @@ from fastapi import FastAPI, Request
 import psycopg2
 import os
 import json
+import logging
 
 app = FastAPI()
 
@@ -91,7 +92,7 @@ async def save_progress(request: Request):
     nivel = data.get("nivel")
     historico = json.dumps(data.get("historico", []))  # Converte o histórico para JSON
 
-    print(f"[DEBUG] Dados recebidos em /save_progress: matricula={matricula}, nivel={nivel}, historico={historico}")
+    logging.debug(f"Dados recebidos em /save_progress: matricula={matricula}, nivel={nivel}, historico={historico}")
 
     conn = get_connection()
     cur = conn.cursor()
@@ -103,11 +104,11 @@ async def save_progress(request: Request):
             SET nivel = EXCLUDED.nivel, historico = EXCLUDED.historico
         """, (matricula, nivel, historico))
         conn.commit()
-        print("[DEBUG] Progresso salvo com sucesso no banco de dados.")
+        logging.debug("Progresso salvo com sucesso no banco de dados.")
         return {"success": True, "message": "Progresso salvo com sucesso!"}
     except psycopg2.Error as e:
         conn.rollback()
-        print(f"[ERROR] Erro ao salvar progresso no banco de dados: {e}")
+        logging.error(f"Erro ao salvar progresso no banco de dados: {e}")
         return {"success": False, "message": str(e)}
     finally:
         cur.close()
@@ -150,3 +151,10 @@ def init_progress_table():
     conn.close()
 
 init_progress_table()
+
+logging.basicConfig(
+    filename="api_debug.log",
+    level=logging.DEBUG,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S"
+)

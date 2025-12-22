@@ -1,3 +1,5 @@
+import random
+
 facil = [
     {
         "pergunta": "Qual é a principal característica de um modelo dinâmico de um sistema?",
@@ -523,55 +525,173 @@ medio = [
 
 dificil = [
     {
-        "pergunta": "O 'atraso de transferência' (lag) em um processo industrial é resultado do efeito combinado de quais duas propriedades?",
+        "pergunta": "Considere o modelo dinâmico de um tanque de mistura dado por: dC(t)/dt + 3C(t) = 2C_in(t), onde C é a concentração no tanque e C_in a concentração de entrada. Qual é a função de transferência G(s) = C(s)/C_in(s) associada a esse sistema?",
         "alternativas": [
-            "Inércia e Ganho",
-            "Resistência e Capacitância",
-            "Atraso de transporte e Atraso de transferência",
-            "Massa e Aceleração"
+            "G(s) = (s + 3) / 2",
+            "G(s) = 2 / s",
+            "G(s) = 2 / (s + 3)",
+            "G(s) = s / (s + 3)"
         ],
-        "correta": 1,
-        "ajuda": "O atraso de transferência é modelado como o efeito conjunto de resistência (R) e capacitância (C)."
+        "correta": 2,
+        "ajuda": "A função de transferência é obtida aplicando a Transformada de Laplace com condições iniciais nulas."
     },
     {
-        "pergunta": "Qual a principal diferença entre um modelo teórico (ou analítico) e um modelo empírico?",
+        "pergunta": "Considere o modelo fenomenológico de dois tanques interligados: ḣ₁ = −2h₁ + h₂ e ḣ₂ = 3h₁ − 4h₂. Qual é a matriz A do sistema no formato ẋ = Ax?",
         "alternativas": [
-            "O teórico usa equações diferenciais e o empírico usa algébricas",
-            "O teórico é desenvolvido com base em princípios da Física/Química e o empírico com base em dados observados",
-            "O teórico é sempre linear e o empírico é sempre não-linear",
-            "O teórico é para sistemas mecânicos e o empírico para sistemas químicos"
+            "[[2, −1], [−3, 4]]",
+            "[[−2, 1], [3, −4]]",
+            "[[1, −2], [3, −4]]",
+            "[[−2, 3], [1, −4]]"
         ],
         "correta": 1,
-        "ajuda": "Modelos teóricos usam leis fundamentais; empíricos ajustam dados observados experimentalmente."
+        "ajuda": "A matriz A é formada diretamente pelos coeficientes das variáveis de estado em cada equação."
+    },
+    {
+        "pergunta": "Considere o modelo linearizado de um tanque esférico operando em torno de um ponto de operação, dado por: ẋ₁ = −2x₁ + x₂ e ẋ₂ = 3x₁ − 4x₂, onde x₁ e x₂ representam desvios do nível em dois pontos do sistema hidráulico. Para determinar se o ponto de operação é estável, o aluno utiliza o MATLAB para calcular os autovalores da matriz do sistema. Qual conclusão correta pode ser obtida a partir dessa análise?",
+        "alternativas": [
+            "O sistema é instável, pois possui pelo menos um autovalor positivo",
+            "O sistema é marginalmente estável, pois possui autovalores nulos",
+            "O sistema é assintoticamente estável, pois todos os autovalores possuem parte real negativa",
+            "Não é possível determinar a estabilidade a partir dos autovalores"
+        ],
+        "correta": 2,
+        "ajuda": "No MATLAB, use eig(A) para calcular os autovalores e analisar o sinal de suas partes reais."
+    },
+    {
+        "pergunta": "Considere o modelo dinâmico de um sistema térmico concentrado dado por: dT(t)/dt + 5T(t) = 10T_in(t). Qual é a função de transferência G(s) = T(s)/T_in(s)?",
+        "alternativas": [
+            "G(s) = 5 / (s + 10)",
+            "G(s) = 10 / s",
+            "G(s) = 10 / (s + 5)",
+            "G(s) = s / (s + 5)"
+        ],
+        "correta": 2,
+        "ajuda": "Aplique a Transformada de Laplace assumindo condições iniciais nulas."
+    },
+    {
+        "pergunta": "Considere o modelo de dois compartimentos térmicos: Ṫ₁ = −2T₁ + T₂ e Ṫ₂ = 3T₁ − 4T₂. Qual é a matriz A do sistema no formato ẋ = Ax?",
+        "alternativas": [
+            "[[2, −1], [−3, 4]]",
+            "[[−2, 1], [3, −4]]",
+            "[[1, −2], [3, −4]]",
+            "[[−2, 3], [1, −4]]"
+        ],
+        "correta": 1,
+        "ajuda": "Organize os coeficientes das variáveis de estado."
+    },
+    {
+        "pergunta": "Em um tanque cilíndrico, a dinâmica do nível é descrita por: dh(t)/dt + 4h(t) = 8q(t). Qual é a função de transferência G(s) = H(s)/Q(s)?",
+        "alternativas": [
+            "G(s) = (s + 4) / 8",
+            "G(s) = 8 / s",
+            "G(s) = 8 / (s + 4)",
+            "G(s) = s / (s + 4)"
+        ],
+        "correta": 2,
+        "ajuda": "Identifique o termo de entrada e aplique Laplace."
+    },
+    {
+        "pergunta": "Considere o modelo fenomenológico de um sistema hidráulico com duas variáveis de estado: ẋ₁ = −2x₁ + x₂ e ẋ₂ = 3x₁ − 4x₂. Qual é a matriz A associada?",
+        "alternativas": [
+            "[[2, −1], [−3, 4]]",
+            "[[−2, 1], [3, −4]]",
+            "[[1, −2], [3, −4]]",
+            "[[−2, 3], [1, −4]]"
+        ],
+        "correta": 1,
+        "ajuda": "Leia diretamente os coeficientes das equações."
+    },
+    {
+        "pergunta": "Na modelagem de um escoamento em um tubo, são dadas as equações: (1) ∂ρ/∂t + ∂(ρv)/∂x = 0 e (2) ρ∂v/∂t + ρv∂v/∂x = −∂p/∂x. Qual equação representa o balanço de massa?",
+        "alternativas": [
+            "Equação (2)",
+            "Equação (1)",
+            "Ambas",
+            "Nenhuma"
+        ],
+        "correta": 1,
+        "ajuda": "O balanço de massa é dado pela equação da continuidade."
+    },
+    {
+        "pergunta": "Considere o modelo dinâmico de um reator perfeitamente misturado dado por: dX(t)/dt + 6X(t) = 12X_in(t). Qual é a função de transferência G(s) = X(s)/X_in(s)?",
+        "alternativas": [
+            "G(s) = (s + 6) / 12",
+            "G(s) = 12 / s",
+            "G(s) = 12 / (s + 6)",
+            "G(s) = s / (s + 6)"
+        ],
+        "correta": 2,
+        "ajuda": "Use a Transformada de Laplace com condições iniciais nulas."
+    },
+    {
+        "pergunta": "Considere o modelo fenomenológico de um sistema de armazenamento com duas variáveis: ẋ₁ = −2x₁ + x₂ e ẋ₂ = 3x₁ − 4x₂. Qual é a matriz A no formato ẋ = Ax?",
+        "alternativas": [
+            "[[2, −1], [−3, 4]]",
+            "[[−2, 1], [3, −4]]",
+            "[[1, −2], [3, −4]]",
+            "[[−2, 3], [1, −4]]"
+        ],
+        "correta": 1,
+        "ajuda": "A matriz A é formada pelos coeficientes das variáveis de estado."
     }
-    ]
+]
 
-def obter_perguntas_por_nivel(nivel, historico):
+
+
+import copy
+
+def obter_perguntas_por_nivel(nivel, historico, limite=10):
     """
-    Retorna até 10 perguntas do nível especificado, excluindo as já respondidas (com base nos índices).
-    Se todas as perguntas forem respondidas, retorna as mais antigas do histórico.
+    Regras garantidas:
+    1) Perguntas do nível atual vêm primeiro
+    2) Não repete perguntas já respondidas (histórico)
+    3) Se não completar `limite`, usa perguntas do próximo nível
+    4) NÃO altera as listas base (facil, medio, dificil)
     """
-    print(f"[DEBUG] Obtendo perguntas para nível {nivel}. Histórico de índices: {historico}")
-    perguntas_por_nivel = {1: facil, 2: medio, 3: dificil}
-    perguntas_disponiveis = perguntas_por_nivel.get(nivel, [])
 
-    if not perguntas_disponiveis:
-        print("[ERROR] Nenhuma pergunta disponível para o nível especificado.")
-        return []
+    perguntas_por_nivel = {
+        1: facil,
+        2: medio,
+        3: dificil
+    }
 
-    # Garante que o histórico seja uma lista de índices válidos
-    if not isinstance(historico, list):
-        historico = []
-    historico = [i for i in historico if isinstance(i, int) and 0 <= i < len(perguntas_disponiveis)]
+    perguntas_jogo = []
 
-    # Filtra perguntas não respondidas com base nos índices
-    nao_respondidas = [p for i, p in enumerate(perguntas_disponiveis) if i not in historico]
-    print(f"[DEBUG] Perguntas não respondidas: {nao_respondidas}")
+    # ========= NÍVEL ATUAL =========
+    perguntas_atual = perguntas_por_nivel.get(nivel, [])
 
-    if nao_respondidas:
-        return nao_respondidas[:10]
-    else:
-        # Retorna até 10 perguntas já respondidas, priorizando as mais antigas
-        repetidas = [perguntas_disponiveis[i] for i in historico[:10] if i < len(perguntas_disponiveis)]
-        print(f"[DEBUG] Retornando perguntas repetidas: {repetidas}")
-        return repetidas
+    # valida histórico apenas contra o nível atual
+    historico_atual = {
+        i for i in historico
+        if isinstance(i, int) and 0 <= i < len(perguntas_atual)
+    }
+
+    # perguntas não respondidas do nível atual (ORDEM PRESERVADA)
+    for i, p in enumerate(perguntas_atual):
+        if len(perguntas_jogo) >= limite:
+            break
+        if i in historico_atual:
+            continue
+
+        perguntas_jogo.append({
+            **copy.deepcopy(p),
+            "indice_global": i,
+            "nivel": nivel
+        })
+
+    # ========= PRÓXIMO NÍVEL (SE PRECISAR) =========
+    if len(perguntas_jogo) < limite and nivel < 3:
+        prox_nivel = nivel + 1
+        perguntas_prox = perguntas_por_nivel.get(prox_nivel, [])
+
+        for i, p in enumerate(perguntas_prox):
+            if len(perguntas_jogo) >= limite:
+                break
+
+            perguntas_jogo.append({
+                **copy.deepcopy(p),
+                "indice_global": i,
+                "nivel": prox_nivel
+            })
+
+    return perguntas_jogo
