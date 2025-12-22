@@ -1,0 +1,44 @@
+PS C:\Users\maxpi> $body = @{
+>>     nome = "Teste"
+>>     matricula = "teste123"
+>>     email = "teste@email.com"
+>>     senha = "1234"
+>> } | ConvertTo-Json
+PS C:\Users\maxpi>
+PS C:\Users\maxpi> Invoke-RestMethod `
+>>   -Uri "https://showapi-production-1dd5.up.railway.app/register" `
+>>   -Method POST `
+>>   -Body $body `
+>>   -ContentType "application/json"
+
+success message
+------- -------
+   True UsuÃ¡rio registrado com sucesso!
+
+
+PS C:\Users\maxpi>
+PS C:\Users\maxpi> $progress = @{
+>>     matricula = "teste123"
+>>     nivel = 2
+>>     historico = @(1,3,5,7)
+>> } | ConvertTo-Json
+PS C:\Users\maxpi>
+PS C:\Users\maxpi> Invoke-RestMethod `
+>>   -Uri "https://showapi-production-1dd5.up.railway.app/save_progress" `
+>>   -Method POST `
+>>   -Body $progress `
+>>   -ContentType "application/json"
+
+success message
+------- -------
+   True Progresso salvo com sucesso!
+
+
+PS C:\Users\maxpi>
+PS C:\Users\maxpi> Invoke-RestMethod `
+>>   -Uri "https://showapi-production-1dd5.up.railway.app/load_progress?matricula=teste123" `
+>>   -Method GET
+
+success nivel historico
+------- ----- ---------
+   True     2 {1, 3, 5, 7}

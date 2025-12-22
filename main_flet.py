@@ -188,11 +188,10 @@ class ShowDoMilhao:
         self.nivel = 1
         self.historico = []
         self.perguntas_jogo = []
-        self.carregar_progresso()  # Carrega progresso ao iniciar
         self.tela_inicial()
 
     def carregar_progresso(self):
-        """Carrega progresso do jogador da API."""
+        """Carrega progresso do jogador da API ou inicializa com valores padrão."""
         if not self.matricula:
             print("[ERROR] Matrícula não definida. Não é possível carregar progresso.")
             return
@@ -203,9 +202,10 @@ class ShowDoMilhao:
             self.historico = dados.get("historico", [])
             print(f"[DEBUG] Progresso carregado: nivel={self.nivel}, historico={self.historico}")
         else:
-            print(f"[ERROR] Falha ao carregar progresso: {dados}")
+            print(f"[DEBUG] Nenhum progresso encontrado para matrícula {self.matricula}. Inicializando progresso.")
             self.nivel = 1
             self.historico = []
+            self.salvar_progresso()  # Salva progresso inicial na API
 
     def salvar_progresso(self):
         """Salva progresso do jogador na API."""
@@ -219,6 +219,27 @@ class ShowDoMilhao:
             print("[DEBUG] Progresso salvo com sucesso na API.")
         else:
             print(f"[ERROR] Falha ao salvar progresso na API: {resposta}")
+
+    def verificar_resposta(self, escolha):
+        """Verifica a resposta do jogador e salva progresso ao final da partida."""
+        correta = self.pergunta_atual["nova_correta"]
+        if escolha == correta:
+            print("[DEBUG] Resposta correta.")
+            self.historico.append(self.pergunta_atual)
+            if self.indice >= len(self.perguntas_jogo) - 1:
+                self.avancar_nivel()
+            self.salvar_progresso()  # Salva progresso após cada resposta correta
+        else:
+            print("[DEBUG] Resposta incorreta.")
+
+    def avancar_nivel(self):
+        """Avança para o próximo nível e salva progresso."""
+        if self.nivel < 3:
+            self.nivel += 1
+        else:
+            self.perguntas_jogo = self.historico  # No nível 3, permite repetir perguntas já respondidas
+        print(f"[DEBUG] Avançando para o nível {self.nivel}.")
+        self.salvar_progresso()  # Salva progresso ao avançar de nível
 
     # helpers para compatibilidade de ButtonStyle entre versões
     def _make_button_style(self):
@@ -999,7 +1020,9 @@ class TelaLogin(ft.Control):  # Substituir UserControl por Control
             return
         if ok:
             try:
-                ShowDoMilhao(self.page, on_logout=lambda: show_control(self.page, lambda: TelaEntrada(self.page, self.callback)))
+                jogo = ShowDoMilhao(self.page, on_logout=lambda: show_control(self.page, lambda: TelaEntrada(self.page, self.callback)))
+                jogo.matricula = matricula  # Define a matrícula do jogador
+                jogo.carregar_progresso()  # Carrega ou inicializa o progresso
                 return
             except Exception as ex:
                 self.msg.value = "Erro ao iniciar jogo."
@@ -1010,7 +1033,7 @@ class TelaLogin(ft.Control):  # Substituir UserControl por Control
                     pass
         else:
             # Mostrar mensagem de erro em vermelho
-            self.msg.value = "Senha ou Matricula Incorreta!"
+            self.msg.value = "Senha ou Matrícula Incorreta!"
             self.msg.color = (colors.RED if colors is not None else None)
             try:
                 self.senha.value = ""
