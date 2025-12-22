@@ -184,22 +184,6 @@ class ShowDoMilhao:
         self.page = page
         # callback para voltar à tela de entrada (login/registro)
         self.on_logout = on_logout
-        try:
-            self.page.title = "Show do Coutão"
-            self.page.bgcolor = "#002e5c"
-        except Exception:
-            pass
-        self.musica = MusicaPlayer(page)
-        self.pontos = 0
-        self.checkpoint = 0
-        self.perguntas_jogo = []
-        self.pergunta_atual = None
-        self.indice = 0
-        self.ajuda_usada = False
-        self.troca_usada = False
-        self.ajuda_professor_usada = False
-        self.labels_regua = []
-        self.botoes = []
         self.matricula = None  # Identificador do jogador
         self.nivel = 1
         self.historico = []
@@ -212,6 +196,7 @@ class ShowDoMilhao:
         if not self.matricula:
             print("[ERROR] Matrícula não definida. Não é possível carregar progresso.")
             return
+        print(f"[DEBUG] Carregando progresso para matrícula: {self.matricula}")
         sucesso, dados = carregar_progresso_api(self.matricula)
         if sucesso:
             self.nivel = dados.get("nivel", 1)
@@ -227,6 +212,8 @@ class ShowDoMilhao:
         if not self.matricula:
             print("[ERROR] Matrícula não definida. Não é possível salvar progresso.")
             return
+        print(f"[DEBUG] Salvando progresso para matrícula: {self.matricula}")
+        print(f"[DEBUG] Dados enviados: nivel={self.nivel}, historico={self.historico}")
         sucesso, resposta = salvar_progresso_api(self.matricula, self.nivel, self.historico)
         if sucesso:
             print("[DEBUG] Progresso salvo com sucesso na API.")
