@@ -361,20 +361,19 @@ class ShowDoMilhao:
             except Exception:
                 pass
             self.pontos = 0
-            # inicia jogo: limpar página e construir a interface do jogo
-            try:
-                self.page.clean()
-            except Exception:
-                pass
+            self.indice = 0
             self.ajuda_usada = False
             self.troca_usada = False
             self.ajuda_professor_usada = False
-            # importa perguntas dinamicamente para evitar import circular no topo
+
             try:
                 from perguntas import obter_perguntas_por_nivel
                 self.perguntas_jogo = obter_perguntas_por_nivel(self.nivel, self.historico)
-            except Exception:
+                print(f"[DEBUG] Perguntas carregadas: {self.perguntas_jogo}")
+            except Exception as ex:
+                print(f"[ERROR] Erro ao obter perguntas: {ex}")
                 self.perguntas_jogo = []
+
             self.perguntas_jogo = self.perguntas_jogo[:10]  # Garante no máximo 10 questões
             self.tela_jogo()
         except Exception as exc:
@@ -489,6 +488,172 @@ class ShowDoMilhao:
             print(f"[DEBUG] Carregando pergunta {self.indice + 1} de {len(self.perguntas_jogo)}")
             if self.indice < len(self.perguntas_jogo):
                 self.pergunta_atual = self.perguntas_jogo[self.indice]
+                print(f"[DEBUG] Pergunta atual: {self.pergunta_atual}")
+
+                alternativas = self.pergunta_atual["alternativas"][:]
+                correta = self.pergunta_atual["correta"]
+
+                # Embaralha as alternativas
+                alternativas_com_indices = list(enumerate(alternativas))
+                random.shuffle(alternativas_com_indices)
+                alternativas_embaralhadas = [alt for idx, alt in alternativas_com_indices]
+                nova_correta = [idx for idx, alt in alternativas_com_indices].index(correta)
+
+                # Atualiza a pergunta atual com as alternativas embaralhadas
+                self.pergunta_atual["alternativas_embaralhadas"] = alternativas_embaralhadas
+                self.pergunta_atual["nova_correta"] = nova_correta
+
+                # Atualiza a interface
+                self.label_pergunta.value = self.pergunta_atual["pergunta"]
+                for i, alt in enumerate(alternativas_embaralhadas):
+                    self.botoes[i].text = alt
+                    self.botoes[i].disabled = False
+                self.label_feedback.value = ""
+                self.page.update()
+            else:
+                print("[DEBUG] Todas as perguntas foram respondidas.")
+                self.vitoria()
+        except Exception as ex:
+            print(f"[ERROR] Erro ao carregar pergunta: {ex}")
+            traceback.print_exc()
+
+    def iniciar_jogo(self, e=None):
+        """Inicia uma nova partida com no máximo 10 questões."""
+        print("[DEBUG] Iniciando nova partida.")
+        try:
+            self.musica.tocar(1)
+        except Exception:
+            pass
+        self.pontos = 0
+        self.indice = 0
+        self.ajuda_usada = False
+        self.troca_usada = False
+        self.ajuda_professor_usada = False
+
+        try:
+            from perguntas import obter_perguntas_por_nivel
+            self.perguntas_jogo = obter_perguntas_por_nivel(self.nivel, self.historico)
+            print(f"[DEBUG] Perguntas carregadas: {self.perguntas_jogo}")
+        except Exception as ex:
+            print(f"[ERROR] Erro ao obter perguntas: {ex}")
+            self.perguntas_jogo = []
+
+        self.perguntas_jogo = self.perguntas_jogo[:10]  # Garante no máximo 10 questões
+        self.tela_jogo()
+        except Exception as exc:
+            tb = _tb.format_exc()
+            print("[ERROR] Exception em iniciar_jogo:\n", tb)
+            # substituir diálogo por mensagem inline
+            try:
+                _page_message(self.page, "Erro ao iniciar jogo. Veja console.", (colors.RED if colors is not None else None))
+            except Exception:
+                pass
+            return
+
+    def tela_jogo(self):
+        self.page.clean()
+        self.labels_regua = []
+        regua = []
+        for i in range(len(self.perguntas_jogo)):
+            texto = f"{i + 1}"
+            icone = ""
+            cor_fundo = (colors.BLUE_900 if colors is not None else None)
+            cor_texto = (colors.WHITE if colors is not None else None)
+            bolinha = ft.Container(
+                content=ft.Text(texto, size=16, color=cor_texto, weight=ft.FontWeight.BOLD),
+                width=36,
+                height=36,
+                bgcolor=cor_fundo,
+                border=ft.border.all(3, (colors.YELLOW if (colors is not None) else None)),
+                border_radius=18,
+                alignment=ft.alignment.center,
+                margin=ft.margin.only(right=0)
+            )
+            if i + 1 in [3, 5, 8]:
+                icone = "💰"
+            elif i + 1 == 10:
+                icone = "🏆"
+            item = ft.Row([
+                bolinha,
+                ft.Text(icone, size=18, color=cor_texto) if icone else ft.Text("")
+            ], alignment=ft.MainAxisAlignment.CENTER, spacing=2)
+            regua.append(item)
+        self.labels_regua = regua
+        self.label_pergunta = ft.Text("", size=18, color=(colors.YELLOW if colors is not None else None), weight=ft.FontWeight.BOLD)
+        self.botoes = []
+        for i in range(4):
+            botao = ft.ElevatedButton(
+                "...",
+                width=500,
+                bgcolor=(colors.BLUE if colors is not None else None),
+                color=(colors.WHITE if colors is not None else None),
+                on_click=lambda e, i=i: self.verificar_resposta(i)
+            )
+            self.botoes.append(botao)
+        self.label_feedback = ft.Text("", size=16, color=(colors.WHITE if colors is not None else None))
+        self.label_saldo = ft.Text(f"Saldo atual: R${self.pontos}", size=16, color=(colors.CYAN if colors is not None else None))
+        self.botao_ajuda = ft.ElevatedButton(
+            "Rodar Dados",
+            bgcolor=(colors.PURPLE if colors is not None else None),
+            color=(colors.WHITE if colors is not None else None),
+            width=160,
+            on_click=self.ajuda_dado
+        )
+        self.botao_troca = ft.ElevatedButton(
+            "Trocar Pergunta",
+            bgcolor=(colors.GREEN_900 if colors is not None else None),
+            color=(colors.WHITE if colors is not None else None),
+            width=160,
+            on_click=self.trocar_pergunta
+        )
+        self.botao_professor = ft.ElevatedButton(
+            "Ajuda dos Professores",
+            bgcolor=(colors.ORANGE_900 if colors is not None else None),
+            color=(colors.WHITE if colors is not None else None),
+            width=160,
+            on_click=self.ajuda_professor
+        )
+        self.botao_desistir = ft.ElevatedButton("Desistir", on_click=self.desistir)
+        self.page.add(
+            ft.Row([
+                ft.Column([
+                    self.label_pergunta,
+                    *self.botoes,
+                    ft.Row([self.botao_ajuda, self.botao_troca, self.botao_professor]),
+                    self.label_feedback,
+                    self.label_saldo,
+                    ft.Row([self.botao_desistir]),  # Removido o botão "Sair"
+                ], alignment=ft.MainAxisAlignment.START),
+                ft.Column(regua, alignment=ft.MainAxisAlignment.START, spacing=0)
+            ], alignment=ft.MainAxisAlignment.CENTER)
+        )
+        self.carregar_pergunta()
+
+    # helpers de texto para dividir questão/ajuda
+    def dividir_pergunta(self, texto, limite=90):
+        if len(texto) <= limite:
+            return texto, ""
+        idx = texto.rfind(" ", 0, limite)
+        if idx == -1:
+            idx = limite
+        return texto[:idx], texto[idx:].lstrip()
+
+    def dividir_ajuda(self, texto, limite=60):
+        if len(texto) <= limite:
+            return texto
+        idx = texto.rfind(" ", 0, limite)
+        if idx == -1:
+            idx = limite
+        return texto[:idx] + "\n" + texto[idx:].lstrip()
+
+    def carregar_pergunta(self):
+        """Carrega a próxima pergunta e atualiza a interface."""
+        try:
+            print(f"[DEBUG] Carregando pergunta {self.indice + 1} de {len(self.perguntas_jogo)}")
+            if self.indice < len(self.perguntas_jogo):
+                self.pergunta_atual = self.perguntas_jogo[self.indice]
+                print(f"[DEBUG] Pergunta atual: {self.pergunta_atual}")
+
                 alternativas = self.pergunta_atual["alternativas"][:]
                 correta = self.pergunta_atual["correta"]
 
