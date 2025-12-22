@@ -195,10 +195,11 @@ class ShowDoMilhao:
         self.ajuda_professor_usada = False
         self.labels_regua = []
         self.botoes = []
-        self.matricula = None  # Adicionado para identificar o jogador
+        self.matricula = None  # Identificador do jogador
         self.nivel = 1
         self.historico = []
-        self.carregar_progresso()
+        self.perguntas_jogo = []
+        self.carregar_progresso()  # Carrega progresso ao iniciar
         self.tela_inicial()
 
     def carregar_progresso(self):
@@ -344,6 +345,7 @@ class ShowDoMilhao:
                 self.perguntas_jogo = obter_perguntas_por_nivel(self.nivel, self.historico)
             except Exception:
                 self.perguntas_jogo = []
+            self.perguntas_jogo = self.perguntas_jogo[:10]  # Garante no máximo 10 questões
             self.tela_jogo()
         except Exception as exc:
             tb = _tb.format_exc()
@@ -603,10 +605,9 @@ class ShowDoMilhao:
                 pass
             self.pontos += 1000
             self.historico.append(self.pergunta_atual)
-            self.salvar_progresso()
             if self.indice >= len(self.perguntas_jogo) - 1:
                 self.avancar_nivel()
-            self.salvar_progresso()
+            self.salvar_progresso()  # Salva progresso após cada resposta correta
             self.label_feedback.value = f"✅ Correto! Ganhou R$1000"
             try:
                 self.label_feedback.color = (colors.GREEN if colors is not None else None)
@@ -637,13 +638,13 @@ class ShowDoMilhao:
         self.derrota()
 
     def avancar_nivel(self):
-        """Avança para o próximo nível se houver perguntas disponíveis."""
+        """Avança para o próximo nível e salva progresso."""
         if self.nivel < 3:
             self.nivel += 1
         else:
             # No nível 3, permite repetir perguntas já respondidas
             self.perguntas_jogo = self.historico
-        self.salvar_progresso()
+        self.salvar_progresso()  # Salva progresso ao avançar de nível
 
     def vitoria(self):
         self.page.clean()
