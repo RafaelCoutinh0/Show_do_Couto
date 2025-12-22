@@ -154,16 +154,17 @@ class MusicaPlayer:
 def salvar_progresso_api(matricula, nivel, historico):
     """Envia o progresso do jogador para a API."""
     try:
-        print(f"[DEBUG] Salvando progresso: matricula={matricula}, nivel={nivel}, historico={historico}")
-        r = requests.post(f"{API_URL}/save_progress", json={
+        progresso = {
             "matricula": matricula,
             "nivel": nivel,
             "historico": historico
-        }, timeout=10)
+        }
+        print(f"[DEBUG] Enviando progresso para a API: {progresso}")
+        r = requests.post(f"{API_URL}/save_progress", json=progresso, timeout=10)
         print(f"[DEBUG] Resposta da API /save_progress: {r.status_code}, {r.text}")
         return r.status_code == 200, r.json()
     except Exception as ex:
-        print(f"[ERROR] Erro ao salvar progresso: {ex}")
+        print(f"[ERROR] Erro ao salvar progresso na API: {ex}")
         return False, str(ex)
 
 def carregar_progresso_api(matricula):
@@ -216,8 +217,15 @@ class ShowDoMilhao:
             print("[ERROR] Matrícula não definida. Não é possível salvar progresso.")
             return
         try:
-            print(f"[DEBUG] Salvando progresso: matricula={self.matricula}, nivel={self.nivel}, historico={self.historico}")
-            sucesso, resposta = salvar_progresso_api(self.matricula, self.nivel, self.historico)
+            # Garante que o histórico seja uma lista de índices válidos
+            historico_indices = [self.perguntas_jogo.index(p) for p in self.historico if p in self.perguntas_jogo]
+            progresso = {
+                "matricula": self.matricula,
+                "nivel": self.nivel,
+                "historico": historico_indices
+            }
+            print(f"[DEBUG] Salvando progresso: {progresso}")
+            sucesso, resposta = salvar_progresso_api(progresso["matricula"], progresso["nivel"], progresso["historico"])
             if sucesso:
                 print("[DEBUG] Progresso salvo com sucesso na API.")
             else:
